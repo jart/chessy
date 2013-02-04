@@ -5,16 +5,24 @@
 #include <array>
 #include <iostream>
 #include <string>
-#include <vector>
 
 using std::array;
 using std::cout;
 using std::endl;
 using std::string;
-using std::vector;
+
+const int kColors = 2;
+const int kPieces = 6;
+const int kWidth = 8;
+const int kSquares = kWidth * kWidth;
+const string kColorReset = "\x1b[0m";
+const string kColorGray = "\x1b[38;5;241m";
+const string kColorBlack = "\x1b[30m";
+const string kColorWhiteBg = "\x1b[47m";
+const string kColorGrayBg = "\x1b[48;5;246m";
 
 typedef uint64_t Position;
-typedef array<Position, 12> Board;
+typedef array<Position, kPieces * kColors> Board;
 
 enum Color {
   kWhite = 0,
@@ -30,12 +38,12 @@ enum Piece {
   kKing = 5,
 };
 
-const array<string, 12> kPieceString = {
+const array<string, kPieces * kColors> kPieceString = {
   "♙", "♘", "♗", "♖", "♕", "♔",
   "♟", "♞", "♝", "♜", "♛", "♚",
 };
 
-const array<Position, 6> kInitialRows = {
+const array<Position, kPieces> kInitial = {
   0xff,  // Pawn
   0x42,  // Knight
   0x24,  // Bishop
@@ -47,56 +55,40 @@ const array<Position, 6> kInitialRows = {
 Board g_board;
 
 void Reset() {
-  g_board.fill(0);
-  for (int n = 0; n < 6; ++n) {
-    if (n == kPawn) {
-      g_board[n] |= kInitialRows[n] << 8;
-      g_board[n + 6] |= kInitialRows[n] << (64 - 16);
-    } else {
-      g_board[n] |= kInitialRows[n];
-      g_board[n + 6] |= kInitialRows[n] << (64 - 8);
-    }
+  g_board.fill(0x0);
+  g_board[kPawn] |= kInitial[kPawn] << kWidth;
+  g_board[kPawn + kPieces] |= kInitial[kPawn] << (kSquares - kWidth * 2);
+  for (int piece = kKnight; piece < kPieces; ++piece) {
+    g_board[piece] |= kInitial[piece];
+    g_board[piece + kPieces] |= kInitial[piece] << (kSquares - kWidth);
   }
-}
-
-void Checker(bool is_white) {
-  if (is_white) {
-    cout << "\x1b[47;30m";
-  } else {
-    cout << "\x1b[48;5;246;30m";
-  }
-}
-
-void EndLine() {
-  cout << "\x1b[0m" << endl;
 }
 
 void Print() {
-  array<string, 64> sboard;
+  array<string, kSquares> sboard;
   sboard.fill(" ");
-  for (int bit = 0; bit < 64; ++bit) {
-    for (int piece = 0; piece < 12; ++piece) {
+  for (int bit = 0; bit < kSquares; ++bit) {
+    for (int piece = kPawn; piece < kPieces * 2; ++piece) {
       if ((g_board[piece] >> bit) & 1) {
         sboard[bit] = kPieceString[piece];
         break;
       }
     }
   }
-  for (int y = 7; y >= 0; --y) {
-    cout << "\x1b[38;5;241m" << y + 1 << " ";
-    for (int x = 0; x < 8; ++x) {
-      Checker((x + (y % 2)) % 2);
-      cout << sboard[y * 8 + x] << " ";
+  for (int y = kWidth - 1; y >= 0; --y) {
+    cout << kColorGray << y + 1 << " ";
+    cout << kColorBlack;
+    for (int x = 0; x < kWidth; ++x) {
+      cout << ((x + y) % 2 ? kColorWhiteBg : kColorGrayBg);
+      cout << sboard[y * kWidth + x] << " ";
     }
-    EndLine();
+    cout << kColorReset << endl;
   }
-
-  // Last row letters.
-  cout << "\x1b[38;5;241m  ";
-  for (int x = 0; x < 8; ++x) {
+  cout << kColorGray << "  ";
+  for (int x = 0; x < kWidth; ++x) {
     cout << static_cast<char>('A' + x) << " ";
   }
-  EndLine();
+  cout << kColorReset << endl;
 }
 
 int main(int argc, char** argv) {
