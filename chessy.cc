@@ -3,10 +3,12 @@
 
 #include <cassert>
 #include <cstdint>
+#include <ctime>
 #include <algorithm>
 #include <array>
 #include <bitset>
 #include <iostream>
+#include <utility>
 #include <string>
 #include <vector>
 
@@ -14,10 +16,11 @@ using std::array;
 using std::bitset;
 using std::cout;
 using std::endl;
+using std::pair;
 using std::string;
 using std::vector;
 
-typedef int16_t Square;
+typedef int Square;
 
 enum Color {
   kWhite = 0,
@@ -39,16 +42,8 @@ struct Location {
       : empty(false), color(color), piece(piece), square(square) {}
   bool empty : 1;
   Color color : 1;
-  Piece piece : 4;
-  Square square : 16;
-};
-
-enum MoveType {
-  kInvalid = 0,
-  kRegular = 1,
-  kAttack = 2,
-  kCastle = 3,
-  kCastleQueen = 4,
+  Piece piece : 3;
+  Square square : 7;
 };
 
 static const int kColors = 2;
@@ -111,6 +106,14 @@ inline int File(Square square) {
   return square % kRow;
 }
 
+enum MoveType {
+  kInvalid = 0,
+  kRegular = 1,
+  kAttack = 2,
+  kCastle = 3,
+  kCastleQueen = 4,
+};
+
 struct Move {
   Move() : type(kInvalid) {}
   explicit Move(MoveType type) : type(type) {}
@@ -118,9 +121,9 @@ struct Move {
       : type(type), source(source), dest(dest), captured(kPawn) {}
   Move(MoveType type, Square source, Square dest, Piece captured)
       : type(type), source(source), dest(dest), captured(captured) {}
-  MoveType type : 4;
-  Square source : 6;
-  Square dest : 6;
+  MoveType type : 3;
+  Square source : 7;
+  Square dest : 7;
   Piece captured : 3;
 };
 
@@ -155,15 +158,15 @@ class Board {
   void RookMoves(vector<Move>* res, Square source) const;
   void QueenMoves(vector<Move>* res, Square source) const;
   void KingMoves(vector<Move>* res, Square source) const;
-  void ToggleColor();
 
   BitBoard board_;
   Locations locations_;
   Color color_;
 };
 
-Board::Board() : board_(kInitialBitBoard), color_(kWhite) {
-  for (Square square = 0; square < kSquares; ++square) {
+Board::Board() : board_(kInitialBitBoard), color_(kBlack) {
+  for (int square = 0; square < kSquares; ++square) {
+    locations_[square].square = square;
     for (int piece = 0; piece < kPieces; ++piece) {
       Piece sc_piece = static_cast<Piece>(piece);
       if (board_[piece][square]) {
@@ -222,20 +225,25 @@ void Board::PawnMoves(vector<Move>* res, Square source) const {
 }
 
 void Board::KnightMoves(vector<Move>* res, Square source) const {
-  static const vector<Square> deltas = {
-    kNorth + kNorth + kEast,
-    kNorth + kNorth + kWest,
-    kSouth + kSouth + kEast,
-    kSouth + kSouth + kWest,
-    kWest  + kWest  + kNorth,
-    kWest  + kWest  + kSouth,
-    kEast  + kEast  + kNorth,
-    kEast  + kEast  + kSouth,
+  static const vector<pair<Square, Square> > deltas = {
+    {  2,  1 },
+    {  2, -1 },
+    { -2,  1 },
+    { -2, -1 },
+    {  1, -2 },
+    { -1, -2 },
+    {  1,  2 },
+    { -1,  2 },
   };
-  for (const auto delta : deltas) {
-    Move move = TryMove(source, delta);
+  for (const auto updown : deltas) {
+    int rank = Rank(source) + updown.first;
+    int file = File(source) + updown.second;
+    if ((rank < 0 || rank >= kRow) ||
+        (file < 0 || file >= kRow)) {
+      continue;
+    }
+    Move move = TryMove(source, (rank * kRow + file) - source);
     if (move.type != kInvalid) {
-      cout << move << endl;
       res->push_back(move);
     }
   }
@@ -322,7 +330,6 @@ vector<Move> Board::PossibleMoves() const {
 }
 
 void Board::Update(const Move& move) {
-  cout << "moving: " << move << endl;
   auto& source = locations_[move.source];
   auto& dest = locations_[move.dest];
   assert(!source.empty);
@@ -332,7 +339,6 @@ void Board::Update(const Move& move) {
   dest.piece = source.piece;
   dest.color = source.color;
   color_ = Toggle(color_);
-  cout << dest.square << endl;
 }
 
 void Board::Undo(const Move& move) {
@@ -404,12 +410,13 @@ std::ostream& operator<<(std::ostream& os, const Board& board) {
 
 void Board::DoSomethingLol() {
   vector<Move> moves = PossibleMoves();
+  std::random_shuffle(moves.begin(), moves.end());
   cout << "possible moves: " << moves.size() << endl;
-  assert(moves.size() == 20);
   Update(moves[0]);
 }
 
 int main(int argc, char** argv) {
+  std::srand(unsigned(std::time(0)));
   Board board;
   cout << board << endl;
   board.DoSomethingLol();
