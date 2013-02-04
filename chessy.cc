@@ -326,7 +326,6 @@ void Board::Update(const Move& move) {
   auto& source = locations_[move.source];
   auto& dest = locations_[move.dest];
   assert(!source.empty);
-  assert(dest.empty);
   source.empty = true;
   dest.empty = false;
   dest.piece = source.piece;
@@ -372,14 +371,6 @@ void Board::Print(std::ostream& os) const {
       sboard[loc.square] = kPieceString[loc.piece + loc.color * kPieces];
     }
   }
-  // for (Square square = 0; square < kSquares; ++square) {
-  //   for (int piece = 0; piece < kPieces * 2; ++piece) {
-  //     if (board_[piece][square]) {
-  //       sboard[square] = kPieceString[piece];
-  //       break;
-  //     }
-  //   }
-  // }
   for (int y = kRow - 1; y >= 0; --y) {
     os << kColorGray << y + 1 << " ";
     os << kColorBlack;
@@ -410,10 +401,11 @@ void Board::DoSomethingLol() {
 int main(int argc, char** argv) {
   std::srand(unsigned(std::time(0)));
   Board board;
-  cout << board << endl;
-  board.DoSomethingLol();
-  cout << board << endl;
-  board.DoSomethingLol();
-  cout << board << endl;
+  for (;;) {
+    cout << board << endl;
+    board.DoSomethingLol();
+    const timespec ts = {0, 100000000};
+    nanosleep(&ts, NULL);
+  }
   return 0;
 }
