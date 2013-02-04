@@ -1,7 +1,7 @@
 all: chessy
 
 chessy: chessy.cc
-	g++ -std=c++11 -o chessy chessy.cc
+	clang++ -std=c++11 -Wall -Werror -o chessy chessy.cc
 
 clean:
 	rm -f chessy
