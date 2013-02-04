@@ -4,10 +4,12 @@
 #include <cassert>
 #include <cstdint>
 #include <ctime>
+#include <cstdlib>
 #include <algorithm>
 #include <array>
 #include <bitset>
 #include <iostream>
+#include <map>
 #include <utility>
 #include <string>
 #include <vector>
@@ -121,6 +123,7 @@ struct Move {
   Square source : 7;
   Square dest : 7;
   Piece captured : 3;
+  int score;
 };
 
 std::ostream& operator<<(std::ostream& os, const Move& move) {
@@ -140,12 +143,11 @@ class Board {
   void operator=(const Board&) = delete;
   void Update(const Move& move);
   void Undo(const Move& move);
-  void DoSomethingLol();
-  int Evaluate() const;
+  int Score() const;
+  vector<Move> PossibleMoves() const;
   void Print(std::ostream& os) const;
 
  private:
-  vector<Move> PossibleMoves() const;
   Move TryMove(Square source, Square dx, Square dy) const;
   void DirectionMoves(vector<Move>* res, Square source,
                       Square dx, Square dy) const;
@@ -323,6 +325,17 @@ vector<Move> Board::PossibleMoves() const {
 }
 
 void Board::Update(const Move& move) {
+  assert(move.type != kInvalid);
+  // if (move.captured == kKing) {
+  //   switch (color_) {
+  //     case kWhite:
+  //       cout << "White wins!" << endl;
+  //       exit(0);
+  //     case kBlack:
+  //       cout << "Black wins!" << endl;
+  //       exit(0);
+  //   }
+  // }
   auto& source = locations_[move.source];
   auto& dest = locations_[move.dest];
   assert(!source.empty);
@@ -334,9 +347,10 @@ void Board::Update(const Move& move) {
 }
 
 void Board::Undo(const Move& move) {
-  color_ = Toggle(color_);
+  assert(move.type != kInvalid);
   auto& source = locations_[move.source];
   auto& dest = locations_[move.dest];
+  color_ = Toggle(color_);
   source.empty = false;
   source.color = color_;
   source.piece = dest.piece;
@@ -349,7 +363,7 @@ void Board::Undo(const Move& move) {
   }
 }
 
-int Board::Evaluate() const {
+int Board::Score() const {
   int us = 0;
   int them = 0;
   for (const auto& loc : locations_) {
@@ -392,10 +406,35 @@ std::ostream& operator<<(std::ostream& os, const Board& board) {
   return os;
 }
 
-void Board::DoSomethingLol() {
-  vector<Move> moves = PossibleMoves();
-  std::random_shuffle(moves.begin(), moves.end());
-  Update(moves[0]);
+bool MoveCompare(const Move& a, const Move& b) {
+  if (a.score == b.score) {
+    return std::rand() % 2 == 0;
+  } else {
+    return a.score >= b.score;
+  }
+}
+
+int NegaMax(Board* board, vector<Move>* heap, int depth) {
+  if (depth == 0) {
+    return -board->Score();
+  }
+  vector<Move> moves = board->PossibleMoves();
+  for (auto move : moves) {
+    board->Update(move);
+    vector<Move> heap2;
+    move.score = NegaMax(board, &heap2, depth - 1);
+    heap->push_back(move);
+    std::push_heap(heap->begin(), heap->end(), MoveCompare);
+    board->Undo(move);
+  }
+  return 0;
+}
+
+Move BestMove(Board* board) {
+  vector<Move> heap;
+  NegaMax(board, &heap, 4);
+  std::pop_heap(heap.begin(), heap.end(), MoveCompare);
+  return heap.back();
 }
 
 int main(int argc, char** argv) {
@@ -403,9 +442,7 @@ int main(int argc, char** argv) {
   Board board;
   for (;;) {
     cout << board << endl;
-    board.DoSomethingLol();
-    const timespec ts = {0, 100000000};
-    nanosleep(&ts, NULL);
+    board.Update(BestMove(&board));
   }
   return 0;
 }
