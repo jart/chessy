@@ -49,10 +49,6 @@ struct Location {
 static const int kColors = 2;
 static const int kPieces = 6;
 static const Square kRow = 8;
-static const Square kEast = 1;
-static const Square kWest = -1;
-static const Square kNorth = kRow;
-static const Square kSouth = -kRow;
 static const Square kSquares = kRow * kRow;
 
 static const string kColorReset = "\x1b[0m";
@@ -150,8 +146,9 @@ class Board {
 
  private:
   vector<Move> PossibleMoves() const;
-  Move TryMove(Square source, Square dest) const;
-  void DirectionMoves(vector<Move>* res, Square source, Square dir) const;
+  Move TryMove(Square source, Square dx, Square dy) const;
+  void DirectionMoves(vector<Move>* res, Square source,
+                      Square dx, Square dy) const;
   void PawnMoves(vector<Move>* res, Square square) const;
   void KnightMoves(vector<Move>* res, Square source) const;
   void BishopMoves(vector<Move>* res, Square source) const;
@@ -164,7 +161,7 @@ class Board {
   Color color_;
 };
 
-Board::Board() : board_(kInitialBitBoard), color_(kBlack) {
+Board::Board() : board_(kInitialBitBoard), color_(kWhite) {
   for (int square = 0; square < kSquares; ++square) {
     locations_[square].square = square;
     for (int piece = 0; piece < kPieces; ++piece) {
@@ -181,14 +178,12 @@ Board::Board() : board_(kInitialBitBoard), color_(kBlack) {
   }
 }
 
-Move Board::TryMove(Square source, Square delta) const {
-  Square dest = source + delta;
-  // Horizontal wrapping check.
-  int wrap = File(source) + File(delta + 4) - 4;
-  if ((wrap < 0 || wrap >= kRow) ||
-      (dest < 0 || dest >= kSquares)) {
+Move Board::TryMove(Square source, Square dx, Square dy) const {
+  if ((Rank(source) + dy < 0 || Rank(source) + dy >= kRow) ||
+      (File(source) + dx < 0 || File(source) + dx >= kRow)) {
     return Move(kInvalid);
   }
+  Square dest = source + dx + dy * kRow;
   const auto& loc = locations_[dest];
   if (loc.empty) {
     return Move(kRegular, source, dest);
@@ -200,22 +195,22 @@ Move Board::TryMove(Square source, Square delta) const {
 }
 
 void Board::PawnMoves(vector<Move>* res, Square source) const {
-  Square forward = (color_ == kWhite ? kNorth : kSouth);
+  Square forward = (color_ == kWhite ? 1 : -1);
   Move move;
-  move = TryMove(source, forward + kEast);
+  move = TryMove(source, 1, forward);
   if (move.type == kAttack) {
     res->push_back(move);
   }
-  move = TryMove(source, forward + kWest);
+  move = TryMove(source, -1, forward);
   if (move.type == kAttack) {
     res->push_back(move);
   }
-  move = TryMove(source, forward);
+  move = TryMove(source, 0, forward);
   if (move.type == kRegular) {
     res->push_back(move);
     if ((color_ == kWhite && Rank(source) == 1) ||
         (color_ == kBlack && Rank(source) == 6)) {
-      move = TryMove(source, forward * 2);
+      move = TryMove(source, 0, forward * 2);
       if (move.type == kRegular) {
         res->push_back(move);
       }
@@ -236,43 +231,40 @@ void Board::KnightMoves(vector<Move>* res, Square source) const {
     { -1,  2 },
   };
   for (const auto updown : deltas) {
-    int rank = Rank(source) + updown.first;
-    int file = File(source) + updown.second;
-    if ((rank < 0 || rank >= kRow) ||
-        (file < 0 || file >= kRow)) {
-      continue;
-    }
-    Move move = TryMove(source, (rank * kRow + file) - source);
+    Move move = TryMove(source, updown.first, updown.second);
     if (move.type != kInvalid) {
       res->push_back(move);
     }
   }
 }
 
-void Board::DirectionMoves(vector<Move>* res, Square source, Square dir) const {
-  Square delta = dir;
+void Board::DirectionMoves(vector<Move>* res, Square source,
+                           Square dx, Square dy) const {
+  Square dxm = dx;
+  Square dym = dy;
   Move move(kRegular);
   while (move.type == kRegular) {
-    move = TryMove(source, delta);
+    move = TryMove(source, dxm, dym);
     if (move.type != kInvalid) {
       res->push_back(move);
     }
-    delta += dir;
+    dxm += dx;
+    dym += dy;
   }
 }
 
 void Board::BishopMoves(vector<Move>* res, Square source) const {
-  DirectionMoves(res, source, kNorth + kEast);
-  DirectionMoves(res, source, kNorth + kWest);
-  DirectionMoves(res, source, kSouth + kEast);
-  DirectionMoves(res, source, kSouth + kWest);
+  DirectionMoves(res, source,  1,  1);
+  DirectionMoves(res, source, -1,  1);
+  DirectionMoves(res, source,  1, -1);
+  DirectionMoves(res, source, -1, -1);
 }
 
 void Board::RookMoves(vector<Move>* res, Square source) const {
-  DirectionMoves(res, source, kNorth);
-  DirectionMoves(res, source, kSouth);
-  DirectionMoves(res, source, kEast);
-  DirectionMoves(res, source, kWest);
+  DirectionMoves(res, source,  0,  1);
+  DirectionMoves(res, source,  0, -1);
+  DirectionMoves(res, source,  1,  0);
+  DirectionMoves(res, source, -1,  0);
 }
 
 void Board::QueenMoves(vector<Move>* res, Square source) const {
@@ -281,18 +273,19 @@ void Board::QueenMoves(vector<Move>* res, Square source) const {
 }
 
 void Board::KingMoves(vector<Move>* res, Square source) const {
-  static const vector<Square> deltaz = {
-    kNorth,
-    kNorth + kEast,
-    kNorth + kWest,
-    kSouth,
-    kSouth + kEast,
-    kSouth + kWest,
-    kEast,
-    kWest,
+  static const vector<pair<Square, Square> > deltaz = {
+    {  1,  1 },
+    {  1,  0 },
+    {  1, -1 },
+    {  0,  1 },
+    {  0,  0 },
+    {  0, -1 },
+    { -1,  1 },
+    { -1,  0 },
+    { -1, -1 },
   };
-  for (const auto delta : deltaz) {
-    Move move = TryMove(source, delta);
+  for (const auto updown : deltaz) {
+    Move move = TryMove(source, updown.first, updown.second);
     if (move.type != kInvalid) {
       res->push_back(move);
     }
@@ -411,13 +404,14 @@ std::ostream& operator<<(std::ostream& os, const Board& board) {
 void Board::DoSomethingLol() {
   vector<Move> moves = PossibleMoves();
   std::random_shuffle(moves.begin(), moves.end());
-  cout << "possible moves: " << moves.size() << endl;
   Update(moves[0]);
 }
 
 int main(int argc, char** argv) {
   std::srand(unsigned(std::time(0)));
   Board board;
+  cout << board << endl;
+  board.DoSomethingLol();
   cout << board << endl;
   board.DoSomethingLol();
   cout << board << endl;
