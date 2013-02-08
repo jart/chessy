@@ -18,11 +18,11 @@ using std::array;
 using std::bitset;
 using std::cout;
 using std::endl;
-using std::pair;
 using std::string;
 using std::vector;
 
-typedef int Square;
+typedef int8_t Square;
+typedef std::pair<Square, Square> Delta;
 
 enum Color {
   kWhite = 0,
@@ -146,6 +146,7 @@ class Board {
   int Score() const;
   vector<Move> PossibleMoves() const;
   void Print(std::ostream& os) const;
+  inline Color color() { return color_; }
 
  private:
   Move TryMove(Square source, Square dx, Square dy) const;
@@ -222,7 +223,7 @@ void Board::PawnMoves(vector<Move>* res, Square source) const {
 }
 
 void Board::KnightMoves(vector<Move>* res, Square source) const {
-  static const vector<pair<Square, Square> > deltas = {
+  static const vector<Delta> deltas = {
     {  2,  1 },
     {  2, -1 },
     { -2,  1 },
@@ -275,7 +276,7 @@ void Board::QueenMoves(vector<Move>* res, Square source) const {
 }
 
 void Board::KingMoves(vector<Move>* res, Square source) const {
-  static const vector<pair<Square, Square> > deltaz = {
+  static const vector<Delta> deltaz = {
     {  1,  1 },
     {  1,  0 },
     {  1, -1 },
@@ -414,28 +415,54 @@ bool MoveCompare(const Move& a, const Move& b) {
   }
 }
 
-int NegaMax(Board* board, vector<Move>* heap, int depth) {
+int NegaMax(Board* board, int depth, int alpha, int beta, Move* o_best) {
   if (depth == 0) {
-    return -board->Score();
+    return board->Score() * ((board->color() == kWhite) ? 1 : -1);
   }
-  vector<Move> moves = board->PossibleMoves();
-  for (auto move : moves) {
+  for (const Move& move : board->PossibleMoves()) {
     board->Update(move);
-    vector<Move> heap2;
-    move.score = NegaMax(board, &heap2, depth - 1);
-    heap->push_back(move);
-    std::push_heap(heap->begin(), heap->end(), MoveCompare);
+    int val = -NegaMax(board, depth - 1, -beta, -alpha, NULL);
     board->Undo(move);
+    if (val >= beta) {
+      return val;
+    }
+    if (val >= alpha) {
+      alpha = val;
+      if (o_best) {
+        *o_best = move;
+      }
+    }
   }
-  return 0;
+  return alpha;
 }
 
 Move BestMove(Board* board) {
-  vector<Move> heap;
-  NegaMax(board, &heap, 4);
-  std::pop_heap(heap.begin(), heap.end(), MoveCompare);
-  return heap.back();
+  Move best;
+  NegaMax(board, 5, -9999, +9999, &best);
+  return best;
 }
+
+// int NegaMax(Board* board, vector<Move>* heap, int depth) {
+//   if (depth == 0) {
+//     return -board->Score();
+//   }
+//   for (auto move : board->PossibleMoves()) {
+//     board->Update(move);
+//     vector<Move> heap2;
+//     move.score = NegaMax(board, &heap2, depth - 1);
+//     heap->push_back(move);
+//     std::push_heap(heap->begin(), heap->end(), MoveCompare);
+//     board->Undo(move);
+//   }
+//   return 0;
+// }
+
+// Move BestMove(Board* board) {
+//   vector<Move> heap;
+//   NegaMax(board, &heap, 4);
+//   std::pop_heap(heap.begin(), heap.end(), MoveCompare);
+//   return heap.back();
+// }
 
 int main(int argc, char** argv) {
   std::srand(unsigned(std::time(0)));
