@@ -21,6 +21,7 @@ using std::endl;
 using std::string;
 using std::vector;
 
+typedef int8_t Value;
 typedef int8_t Square;
 typedef std::pair<Square, Square> Delta;
 
@@ -68,13 +69,13 @@ static const array<string, kPieces * kColors> kPieceString = {{
   u8"♟", u8"♞", u8"♝", u8"♜", u8"♛", u8"♚",
 }};
 
-static const array<int, kPieces> kPieceValue = {{
-  1,    // Pawn
-  3,    // Knight
-  3,    // Bishop
-  5,    // Rook
-  9,    // Queen
-  666,  // King
+static const array<Value, kPieces> kPieceValue = {{
+  1,   // Pawn
+  3,   // Knight
+  3,   // Bishop
+  5,   // Rook
+  9,   // Queen
+  50,  // King
 }};
 
 static const BitBoard kInitialBitBoard = {{
@@ -92,7 +93,7 @@ static const BitBoard kInitialBitBoard = {{
   Position("00010000") << (kRow * 7),  // Black King
 }};
 
-static Color Toggle(Color color) {
+Color Toggle(Color color) {
   return (color == kWhite) ? kBlack : kWhite;
 }
 
@@ -118,13 +119,34 @@ struct Move {
   Move(MoveType type, Square source, Square dest)
       : type(type), source(source), dest(dest), captured(kPawn) {}
   Move(MoveType type, Square source, Square dest, Piece captured)
-      : type(type), source(source), dest(dest), captured(captured) {}
+      : type(type), source(source), dest(dest), captured(captured),
+        score(kPieceValue[captured]) {}
   MoveType type : 3;
   Square source : 7;
   Square dest : 7;
   Piece captured : 3;
-  int score;
+  Value score;
 };
+
+bool CompareMoves(const Move& a, const Move& b) {
+  if (a.score == b.score) {
+    return std::rand() % 2 == 0;
+  } else {
+    return a.score > b.score;
+  }
+}
+
+void AddMove(vector<Move>* moves, const Move& move) {
+  moves->push_back(move);
+  std::push_heap(moves->begin(), moves->end(), CompareMoves);
+}
+
+Move GetMove(vector<Move>* moves) {
+  std::pop_heap(moves->begin(), moves->end(), CompareMoves);
+  Move move = moves->back();
+  moves->pop_back();
+  return move;
+}
 
 std::ostream& operator<<(std::ostream& os, const Move& move) {
   string from, to;
@@ -146,7 +168,9 @@ class Board {
   int Score() const;
   vector<Move> PossibleMoves() const;
   void Print(std::ostream& os) const;
+
   inline Color color() { return color_; }
+  inline void set_color(Color color) { color_ = color; }
 
  private:
   Move TryMove(Square source, Square dx, Square dy) const;
@@ -202,20 +226,20 @@ void Board::PawnMoves(vector<Move>* res, Square source) const {
   Move move;
   move = TryMove(source, 1, forward);
   if (move.type == kAttack) {
-    res->push_back(move);
+    AddMove(res, move);
   }
   move = TryMove(source, -1, forward);
   if (move.type == kAttack) {
-    res->push_back(move);
+    AddMove(res, move);
   }
   move = TryMove(source, 0, forward);
   if (move.type == kRegular) {
-    res->push_back(move);
+    AddMove(res, move);
     if ((color_ == kWhite && Rank(source) == 1) ||
         (color_ == kBlack && Rank(source) == 6)) {
       move = TryMove(source, 0, forward * 2);
       if (move.type == kRegular) {
-        res->push_back(move);
+        AddMove(res, move);
       }
     }
   }
@@ -236,7 +260,7 @@ void Board::KnightMoves(vector<Move>* res, Square source) const {
   for (const auto updown : deltas) {
     Move move = TryMove(source, updown.first, updown.second);
     if (move.type != kInvalid) {
-      res->push_back(move);
+      AddMove(res, move);
     }
   }
 }
@@ -249,7 +273,7 @@ void Board::DirectionMoves(vector<Move>* res, Square source,
   while (move.type == kRegular) {
     move = TryMove(source, dxm, dym);
     if (move.type != kInvalid) {
-      res->push_back(move);
+      AddMove(res, move);
     }
     dxm += dx;
     dym += dy;
@@ -290,7 +314,7 @@ void Board::KingMoves(vector<Move>* res, Square source) const {
   for (const auto updown : deltaz) {
     Move move = TryMove(source, updown.first, updown.second);
     if (move.type != kInvalid) {
-      res->push_back(move);
+      AddMove(res, move);
     }
   }
 }
@@ -368,6 +392,9 @@ int Board::Score() const {
   int us = 0;
   int them = 0;
   for (const auto& loc : locations_) {
+    if (loc.empty) {
+      continue;
+    }
     if (loc.color == color_) {
       us += kPieceValue[loc.piece];
     } else {
@@ -377,7 +404,6 @@ int Board::Score() const {
   return us - them;
 }
 
-// Print the chess board to an xterm-256color compatible terminal.
 void Board::Print(std::ostream& os) const {
   array<string, kSquares> sboard;
   sboard.fill(" ");
@@ -407,20 +433,25 @@ std::ostream& operator<<(std::ostream& os, const Board& board) {
   return os;
 }
 
-bool MoveCompare(const Move& a, const Move& b) {
-  if (a.score == b.score) {
-    return std::rand() % 2 == 0;
-  } else {
-    return a.score >= b.score;
-  }
-}
-
 int NegaMax(Board* board, int depth, int alpha, int beta, Move* o_best) {
-  if (depth == 0) {
-    return board->Score() * ((board->color() == kWhite) ? 1 : -1);
+  vector<Move> moves = board->PossibleMoves();
+  if (depth == 0 || moves.size() == 0) {
+    int score = board->Score() * ((board->color() != kWhite) ? 1 : -1);
+    // cout << "SCORE=" << score << endl;
+    return score;
   }
-  for (const Move& move : board->PossibleMoves()) {
+  while (moves.size() > 0) {
+    const Move move = GetMove(&moves);
     board->Update(move);
+    // cout << *board
+    //      << endl
+    //      << "alpha=" << alpha
+    //      << " beta=" << beta
+    //      << " depth=" << depth
+    //      << " moves=" << moves.size()
+    //      << endl;
+    // string lol;
+    // std::getline(std::cin, lol);
     int val = -NegaMax(board, depth - 1, -beta, -alpha, NULL);
     board->Undo(move);
     if (val >= beta) {
@@ -442,30 +473,8 @@ Move BestMove(Board* board) {
   return best;
 }
 
-// int NegaMax(Board* board, vector<Move>* heap, int depth) {
-//   if (depth == 0) {
-//     return -board->Score();
-//   }
-//   for (auto move : board->PossibleMoves()) {
-//     board->Update(move);
-//     vector<Move> heap2;
-//     move.score = NegaMax(board, &heap2, depth - 1);
-//     heap->push_back(move);
-//     std::push_heap(heap->begin(), heap->end(), MoveCompare);
-//     board->Undo(move);
-//   }
-//   return 0;
-// }
-
-// Move BestMove(Board* board) {
-//   vector<Move> heap;
-//   NegaMax(board, &heap, 4);
-//   std::pop_heap(heap.begin(), heap.end(), MoveCompare);
-//   return heap.back();
-// }
-
 int main(int argc, char** argv) {
-  std::srand(unsigned(std::time(0)));
+  std::srand(static_cast<unsigned>(std::time(0)));
   Board board;
   for (;;) {
     cout << board << endl;
