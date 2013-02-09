@@ -8,6 +8,7 @@
 
 #include "board.h"
 
+// using std::array;
 using std::cout;
 using std::endl;
 
@@ -27,10 +28,6 @@ inline Color Toggle(Color color) {
 
 inline int PieceIndex(Color color, Piece piece) {
   return piece + (color == kWhite? 0 : kPieceTypes);
-}
-
-inline string ColorString(Color color) {
-  return (kWhite == color) ? "White" : "Black";
 }
 
 Board::Board() : board_(kInitialBoardPosition), color_(kWhite) {
@@ -294,39 +291,6 @@ Piece Board::PieceAt(Square square) const {
 
 Color Board::ColorAt(Square square) const {
   return square_table_[square].color;
-}
-
-string Board::StringAt(Square square) const {
-  Piece piece = PieceAt(square);
-  if (kNoPiece == piece) {
-    return "Empty";
-  }
-  string name = kPieceNames[piece];
-  return ColorString(ColorAt(square)) + " " + name;
-}
-
-void Board::Print(std::ostream& os) const {
-  array<string, kSquares> sboard;
-  sboard.fill(" ");
-  for (const auto& state : square_table_) {
-    if (!state.empty) {
-      sboard[state.square] = kPieceString[PieceIndex(state.color, state.piece)];
-    }
-  }
-  for (int y = kRow - 1; y >= 0; --y) {
-    os << kColorGray << y + 1 << " ";
-    os << kColorBlack;
-    for (int x = 0; x < kRow; ++x) {
-      os << ((x + y) % 2 ? kColorWhiteBg : kColorGrayBg);
-      os << sboard[y * kRow + x] << " ";
-    }
-    os << kColorReset << endl;
-  }
-  os << kColorGray << "  ";
-  for (int x = 0; x < kRow; ++x) {
-    os << static_cast<char>('A' + x) << " ";
-  }
-  os << kColorReset;
 }
 
 

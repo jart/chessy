@@ -8,7 +8,6 @@
 #include <cstdint>
 #include <string>
 
-
 namespace chessy {
 
 enum GameMode {
@@ -22,14 +21,14 @@ enum GameState {
   kPaused = 2,
 };
 
-GameMode g_mode = kMirror;
-GameState g_state = kNone;
+extern GameMode g_mode;
+extern GameState g_state;
 
-int g_dbg = 1;  // Debug level from 0-2
+extern int g_dbg;  // Debug level from 0-2
 
 // search counters
-int g_nodes_searched = 0;
-int g_nodes_pruned = 0;
+extern int g_nodes_searched;
+extern int g_nodes_pruned;
 
 void GameLoop();
 

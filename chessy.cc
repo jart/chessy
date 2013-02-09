@@ -15,6 +15,8 @@
 #include "chessy.h"
 #include "board.h"
 #include "bot.h"
+#include "render.h"
+
 
 using std::array;
 using std::bitset;
@@ -25,37 +27,11 @@ using std::vector;
 
 namespace chessy {
 
-std::ostream& operator<<(std::ostream& os, const Board& board) {
-  board.Print(os);
-  return os;
-}
-
-std::ostream& operator<<(std::ostream& os, const Square& square) {
-  if (square < 0 || square >= kSquares) {
-    os << "NA(" << static_cast<int>(square) << ")";
-    return os;
-  }
-  string algebraic;
-  algebraic += 'a' + File(square);
-  algebraic += '1' + Rank(square);
-  os << algebraic;
-  return os;
-}
-
-std::ostream& operator<<(std::ostream& os, const Move& move) {
-  // os << "[" << move.type << move.captured << "] "
-  os << move.source << "->" << move.dest;
-  return os;
-}
-
-
-static void DepthCout(int depth) {
-  // Debug nesting info
-  cout << endl;
-  for (int i = kMaxDepth - depth ; i > 0 ; --i) {
-    cout << " + ";
-  }
-}
+GameMode g_mode = kMirror;
+GameState g_state = kNone;
+int g_dbg = 1;
+int g_nodes_searched = 0;
+int g_nodes_pruned = 0;
 
 int NegaMax(Board* board, int depth, int alpha, int beta) {
   vector<Move> moves = board->PossibleMoves();

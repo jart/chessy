@@ -29,9 +29,10 @@ enum Color {
   kBlack = 1,
 };
 const int kColors = 2;
-
 Color Toggle(Color color);
 
+const int kPieceTypes = 6;
+const int kMaxPieces = 16;
 enum Piece {
   kPawn = 0,
   kKnight = 1,
@@ -41,23 +42,6 @@ enum Piece {
   kKing = 5,
   kNoPiece = 6,
 };
-const int kPieceTypes = 6;
-const int kMaxPieces = 16;
-
-// Some terminals are happy, and some are SAD!
-// #define UNICODE
-#ifdef UNICODE
-const array<string, kPieceTypes * kColors> kPieceString = {{
-  u8"♙", u8"♘", u8"♗", u8"♖", u8"♕", u8"♔",
-  u8"♟", u8"♞", u8"♝", u8"♜", u8"♛", u8"♚",
-}};
-#else
-const array<string, kPieceTypes * kColors> kPieceString = {{
-   "P", "N", "B", "R", "Q", "K",
-   "P", "N", "B", "R", "Q", "K",
-}};
-#endif
-
 const array<string, kPieceTypes> kPieceNames = {{
   "Pawn",
   "Knight",
@@ -67,11 +51,10 @@ const array<string, kPieceTypes> kPieceNames = {{
   "King",
 }};
 
-typedef int8_t Offset;
-
 int PieceIndex(Color color, Piece piece);
 
 // Squares index 0-63
+typedef int8_t Offset;
 typedef int8_t Square;
 const Square kRow = 8;
 const Square kSquares = kRow * kRow;
@@ -99,14 +82,6 @@ static const array<Piece, kMaxPieces> kPieceTableIndex = {{
   kKnight, kKnight, kBishop, kBishop, kRook, kRook,
   kQueen, kKing,
 }};
-
-const string kColorReset = "\x1b[0m";
-const string kColorGray = "\x1b[38;5;241m";
-const string kColorBlack = "\x1b[30m";
-const string kColorWhiteBg = "\x1b[47m";
-const string kColorGrayBg = "\x1b[48;5;246m";
-
-string ColorString(Color color);
 
 // 64-bit existential piece-type representation
 typedef bitset<kSquares> BitBoard;
@@ -237,9 +212,9 @@ class Board {
   // Evaluated from the point of view of current player color.
   int Score() const;
   void Print(std::ostream& os) const;
+  string color_str() const;
 
   inline Color color() { return color_; }
-  inline string color_str() const { return ColorString(color_); }
   inline void set_color(Color color) { color_ = color; }
   inline Move last_move() const { return last_move_; }
 
