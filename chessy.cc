@@ -23,6 +23,7 @@ using std::string;
 using std::vector;
 
 typedef int Square;
+typedef int8_t SquareDelta;
 
 enum Color {
   kWhite = 0,
@@ -63,10 +64,44 @@ typedef bitset<kSquares> Position;
 typedef array<Position, kPieces * kColors> BitBoard;
 typedef array<Location, kSquares> Locations;
 
+// <Rank, File> vector.and constants
+typedef struct {
+  int8_t rank;
+  int8_t file;
+} Delta;
+Delta operator+(const Delta& a, const Delta& b) {
+	return Delta{a.rank + b.rank, a.file + b.file};
+}
+static const Delta kU  = { 1,  0};
+static const Delta kD  = {-1,  0};
+static const Delta kR  = { 0,  1};
+static const Delta kL  = { 0, -1};
+static const Delta kUR = { 1,  1};
+static const Delta kUL = { 1, -1};
+static const Delta kDR = {-1,  1};
+static const Delta kDL = {-1, -1};
+static const arry<Delta, 8> kKnightDeltas = {
+  kU + kUR, kU + kUL,
+  kD + kDR, kD + kDL,
+  kR + kUR, kR + kDR,
+  kL + kUL, kL + kDL,
+}
+static const array<Delta, 4> kOrthogonals = {
+  kU, kD, kR, kL,
+} 
+static const array<Delta, 4> kDiagonals = {
+  kUR, kUL, kDR, kDL,
+} 
+
 static const array<string, kPieces * kColors> kPieceString = {{
   u8"♙", u8"♘", u8"♗", u8"♖", u8"♕", u8"♔",
   u8"♟", u8"♞", u8"♝", u8"♜", u8"♛", u8"♚",
 }};
+
+// static const array<string, kPieces * kColors> kPieceString = {{
+//   "♙", "♘", "♗", "♖", "♕", "♔",
+//   "♟", "♞", "♝", "♜", "♛", "♚",
+// }};
 
 static const array<int, kPieces> kPieceValue = {{
   1,    // Pawn
@@ -148,9 +183,8 @@ class Board {
   void Print(std::ostream& os) const;
 
  private:
-  Move TryMove(Square source, Square dx, Square dy) const;
-  void DirectionMoves(vector<Move>* res, Square source,
-                      Square dx, Square dy) const;
+  Move TryMove(Square source, Delta delta) const;
+  void DirectionMoves(vector<Move>* res, Square source, Delta delta) const;
   void PawnMoves(vector<Move>* res, Square square) const;
   void KnightMoves(vector<Move>* res, Square source) const;
   void BishopMoves(vector<Move>* res, Square source) const;
@@ -180,12 +214,15 @@ Board::Board() : board_(kInitialBitBoard), color_(kWhite) {
   }
 }
 
-Move Board::TryMove(Square source, Square dx, Square dy) const {
-  if ((Rank(source) + dy < 0 || Rank(source) + dy >= kRow) ||
-      (File(source) + dx < 0 || File(source) + dx >= kRow)) {
+Move Board::TryMove(Square source, Delta delta) const {
+  // Check boundaries
+  rank = Rank(source) + delta.rank;
+  file = File(source) + delta.source;
+  if (rank < 0 || rank > kRow) || 
+     (file < 0 || file > kRow) {
     return Move(kInvalid);
   }
-  Square dest = source + dx + dy * kRow;
+  Square dest = rank * kRow + file;
   const auto& loc = locations_[dest];
   if (loc.empty) {
     return Move(kRegular, source, dest);
@@ -194,79 +231,66 @@ Move Board::TryMove(Square source, Square dx, Square dy) const {
     return Move(kInvalid);
   }
   return Move(kAttack, source, dest, loc.piece);
+  // TODO:  King conditions and Queening
 }
 
 void Board::PawnMoves(vector<Move>* res, Square source) const {
-  Square forward = (color_ == kWhite ? 1 : -1);
+  Square forward = (color_ == kWhite ? kU : kD);
   Move move;
-  move = TryMove(source, 1, forward);
+  move = TryMove(source, forward + kR);
   if (move.type == kAttack) {
     res->push_back(move);
   }
-  move = TryMove(source, -1, forward);
+  move = TryMove(source, forward + kL);
   if (move.type == kAttack) {
     res->push_back(move);
   }
-  move = TryMove(source, 0, forward);
+  move = TryMove(source, forward);
   if (move.type == kRegular) {
     res->push_back(move);
     if ((color_ == kWhite && Rank(source) == 1) ||
         (color_ == kBlack && Rank(source) == 6)) {
-      move = TryMove(source, 0, forward * 2);
+      move = TryMove(source, forward + forward);
       if (move.type == kRegular) {
         res->push_back(move);
       }
     }
   }
   // TODO: Promotion
+  // TODO: En Passant
 }
 
 void Board::KnightMoves(vector<Move>* res, Square source) const {
-  static const vector<pair<Square, Square> > deltas = {
-    {  2,  1 },
-    {  2, -1 },
-    { -2,  1 },
-    { -2, -1 },
-    {  1, -2 },
-    { -1, -2 },
-    {  1,  2 },
-    { -1,  2 },
-  };
-  for (const auto updown : deltas) {
-    Move move = TryMove(source, updown.first, updown.second);
+  for (const auto delta : kKnightDeltas) {
+    Move move = TryMove(source, delta);
     if (move.type != kInvalid) {
       res->push_back(move);
     }
   }
 }
 
-void Board::DirectionMoves(vector<Move>* res, Square source,
-                           Square dx, Square dy) const {
-  Square dxm = dx;
-  Square dym = dy;
+void Board::DirectionMoves(vector<Move>* res, Square source, Delta d) const {
+  Delta dd = d;
   Move move(kRegular);
   while (move.type == kRegular) {
-    move = TryMove(source, dxm, dym);
+    move = TryMove(source, dd);
     if (move.type != kInvalid) {
       res->push_back(move);
     }
-    dxm += dx;
-    dym += dy;
+	dd += d;
   }
 }
 
 void Board::BishopMoves(vector<Move>* res, Square source) const {
-  DirectionMoves(res, source,  1,  1);
-  DirectionMoves(res, source, -1,  1);
-  DirectionMoves(res, source,  1, -1);
-  DirectionMoves(res, source, -1, -1);
+  for (const auto delta : kDiagonals) {
+    DirectionMoves(res, source,  delta);
+  }
 }
 
 void Board::RookMoves(vector<Move>* res, Square source) const {
-  DirectionMoves(res, source,  0,  1);
-  DirectionMoves(res, source,  0, -1);
-  DirectionMoves(res, source,  1,  0);
-  DirectionMoves(res, source, -1,  0);
+  for (const auto delta : kOrthogonals) {
+    DirectionMoves(res, source, delta);
+  }
 }
 
 void Board::QueenMoves(vector<Move>* res, Square source) const {
@@ -275,19 +299,9 @@ void Board::QueenMoves(vector<Move>* res, Square source) const {
 }
 
 void Board::KingMoves(vector<Move>* res, Square source) const {
-  static const vector<pair<Square, Square> > deltaz = {
-    {  1,  1 },
-    {  1,  0 },
-    {  1, -1 },
-    {  0,  1 },
-    {  0,  0 },
-    {  0, -1 },
-    { -1,  1 },
-    { -1,  0 },
-    { -1, -1 },
-  };
-  for (const auto updown : deltaz) {
-    Move move = TryMove(source, updown.first, updown.second);
+  static const vector<Delta> king_deltas = kOrthogonals + kDiagonals;
+  for (const auto delta : king_deltas) {
+    Move move = TryMove(source, delta);
     if (move.type != kInvalid) {
       res->push_back(move);
     }
