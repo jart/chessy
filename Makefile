@@ -1,10 +1,22 @@
 all: chessy
 
-chessy: chessy.cc
-	g++ -std=c++11 -g -O0 -Wall -Werror -o chessy chessy.cc
+CC=g++
+STD=c++11
+FLAGS=-std=$(STD) -g -O0 -Wall -Werror
+
+all: chessy
+
+chessy: chessy.o board.o
+	$(CC) $(FLAGS) chessy.o board.o -o chessy
+
+chessy.o: chessy.cc
+	$(CC) $(FLAGS) -c chessy.cc -o chessy.o
+
+board.o: board.cc board.h
+	$(CC) $(FLAGS) -c board.cc -o board.o
 
 clean:
-	rm -f chessy
+	rm -f chessy *.o
 
 run: chessy
 	./chessy
