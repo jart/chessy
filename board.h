@@ -45,7 +45,7 @@ const int kPieceTypes = 6;
 const int kMaxPieces = 16;
 
 // Some terminals are happy, and some are SAD!
-#define UNICODE
+// #define UNICODE
 #ifdef UNICODE
 const array<string, kPieceTypes * kColors> kPieceString = {{
   u8"♙", u8"♘", u8"♗", u8"♖", u8"♕", u8"♔",
