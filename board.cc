@@ -29,6 +29,9 @@ inline int PieceIndex(Color color, Piece piece) {
   return piece + (color == kWhite? 0 : kPieceTypes);
 }
 
+inline string ColorString(Color color) {
+  return (kWhite == color) ? "White" : "Black";
+}
 
 Board::Board() : board_(kInitialBoardPosition), color_(kWhite) {
 
@@ -75,6 +78,7 @@ void Board::Update(const Move& move) {
   // Flush memoized bit masks
   friends_ = kEmpty;
   enemies_ = kEmpty;
+  last_move_ = move;
 }
 
 void Board::Undo(const Move& move) {
@@ -298,7 +302,7 @@ string Board::StringAt(Square square) const {
     return "Empty";
   }
   string name = kPieceNames[piece];
-  return (kWhite == ColorAt(square) ? "White " : "Black ") + name;
+  return ColorString(ColorAt(square)) + " " + name;
 }
 
 void Board::Print(std::ostream& os) const {

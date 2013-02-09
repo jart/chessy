@@ -14,6 +14,7 @@
 
 #include "chessy.h"
 #include "board.h"
+#include "bot.h"
 
 using std::array;
 using std::bitset;
@@ -29,48 +30,126 @@ std::ostream& operator<<(std::ostream& os, const Board& board) {
   return os;
 }
 
-int NegaMax(Board* board, int depth, int alpha, int beta, Move* o_best) {
+std::ostream& operator<<(std::ostream& os, const Square& square) {
+  if (square < 0 || square >= kSquares) {
+    os << "NA(" << static_cast<int>(square) << ")";
+    return os;
+  }
+  string algebraic;
+  algebraic += 'a' + File(square);
+  algebraic += '1' + Rank(square);
+  os << algebraic;
+  return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const Move& move) {
+  // os << "[" << move.type << move.captured << "] "
+  os << move.source << "->" << move.dest;
+  return os;
+}
+
+
+static void DepthCout(int depth) {
+  // Debug nesting info
+  cout << endl;
+  for (int i = kMaxDepth - depth ; i > 0 ; --i) {
+    cout << " + ";
+  }
+}
+
+int NegaMax(Board* board, int depth, int alpha, int beta) {
   vector<Move> moves = board->PossibleMoves();
+  // Debug with branch factor and window
+  if (g_dbg > 1) {
+    DepthCout(depth);
+    cout << "" << moves.size() << "-< ("
+         << ColorString(Toggle(board->color())) << " " << board->last_move()
+         << ") a[" << alpha
+         << "] b[" << beta << "] >- ";
+  }
+
   if (depth == 0 || moves.size() == 0) {
-    int score = board->Score() * ((board->color() != kWhite) ? 1 : -1);
+    int score = board->Score(); // * ((board->color() != kWhite) ? 1 : -1);
+    if (g_dbg > 1) {
+      cout << "h-val(" << board->color_str() << ")=" << score;
+    }
     // cout << "SCORE=" << score << endl;
     return score;
   }
+
+  g_nodes_searched += moves.size();
 
   while (moves.size() > 0) {
     const Move move = GetMove(&moves);
     board->Update(move);
 
-    /*
-    cout << *board
-         << endl
-         << "alpha=" << alpha
-         << " beta=" << beta
-         << " depth=" << depth
-         << " moves=" << moves.size()
-         << endl;
-    string lol;
-    std::getline(std::cin, lol);
-    */
-
-    int val = -NegaMax(board, depth - 1, -beta, -alpha, NULL);
+    int val = -NegaMax(board, depth - 1, -beta, -alpha);
     board->Undo(move);
+
+    // Beta pruning skips remaining branches, because the current sub-truee is 
+    // now guaranteed to offer no improvement.
     if (val >= beta) {
+      if (g_dbg > 1) {
+        DepthCout(depth);
+        cout << "<-- b-pruned(" << board->color_str() << ")=" << val;
+      }
+      g_nodes_pruned += moves.size();;
       return val;
     }
+
+    // Alpha just maximizes the negation of the next moves
     if (val >= alpha) {
       alpha = val;
-      if (o_best) {
-        *o_best = move;
-      }
     }
+  }
+  if (g_dbg > 1) {
+    DepthCout(depth);
+    cout << "<--- a-negamaxed(" << board->color_str() << ")=" << alpha;
   }
   return alpha;
 }
 
 Move BestMove(Board* board) {
   Move best;
-  NegaMax(board, 5, -9999, +9999, &best);
+  int score = kMinScore;
+
+  g_nodes_searched = 0;
+  g_nodes_pruned = 0;
+
+  cout << "Chessy is thinking..." << endl << endl;
+
+  vector<Move> moves = board->PossibleMoves();
+  for (const auto& move : moves) {
+
+    // Root node move-selection loop is agnostic to the internal algorithm,
+    // and associates scores with moves rather than pruning windows.
+    board->Update(move);
+    int next = -NegaMax(board, kMaxDepth, kMinScore, kMaxScore);
+    board->Undo(move);
+
+    if (next > score) {
+      if (g_dbg > 0) {
+        cout << "Chessy: best move thus far: " << move
+             << " (s-val=" << next << ")" << endl;
+      }
+      score = next;
+      best = move;
+    }
+    string lol;
+
+    if (g_dbg > 1) {
+      std::getline(std::cin, lol);
+    }
+  }
+
+  if (g_dbg > 0) {
+    float savings = 100 * static_cast<float>(g_nodes_pruned) /
+                    static_cast<float>(g_nodes_searched);
+    cout << "Chessy finished thinking!" << endl
+         << "   total branches: " << g_nodes_searched << endl
+         << "   total pruned:   " << g_nodes_pruned << endl
+         << "   search savings: " << savings << "%" << endl;
+  }
   return best;
 }
 
@@ -94,24 +173,6 @@ Move GetMove(vector<Move>* moves) {
   Move move = moves->back();
   moves->pop_back();
   return move;
-}
-
-std::ostream& operator<<(std::ostream& os, const Square& square) {
-  if (square < 0 || square >= kSquares) {
-    os << "NA(" << static_cast<int>(square) << ")";
-    return os;
-  }
-  string algebraic;
-  algebraic += 'a' + File(square);
-  algebraic += '1' + Rank(square);
-  os << algebraic;
-  return os;
-}
-
-std::ostream& operator<<(std::ostream& os, const Move& move) {
-  // os << "[" << move.type << move.captured << "] "
-  os << move.source << " -> " << move.dest;
-  return os;
 }
 
 Move ValidateAlgebraicMove(const string& input) {
@@ -138,10 +199,10 @@ Move ValidateAlgebraicMove(const string& input) {
 }
 
 bool operator==(const Move &a, const Move &b) {
-  return ((a.type == b.type)
-          && (a.captured == b.captured)
-          && (a.source == b.source)
-          && (a.dest == b.dest));
+  return ((a.type == b.type) &&
+          (a.captured == b.captured) &&
+          (a.source == b.source) &&
+          (a.dest == b.dest));
 }
 
 Move HumanMove(Board* board) {
@@ -185,14 +246,14 @@ void GameLoop() {
     string option;
     std::getline(std::cin, option);
 
-    if (toupper(option[0]) == 'Y') {
+    if (std::toupper(option[0]) == 'Y') {
       g_mode = kHuman;
       cout << "You are WHITE and Chessy is BLACK." << endl;
     } else {
       cout << "Chessy is playing Chessy!" << endl;
     }
 
-    chessy::g_state = kPlaying;
+    g_state = kPlaying;
     while(kPlaying == g_state) {
       cout << board << endl;
       Move move = kInvalidMove;
@@ -202,7 +263,7 @@ void GameLoop() {
         cout << "You moved: ";
       } else {
         move = BestMove(&board);
-        cout << "Chessy: ";
+        cout << endl << "Chessy: ";
       }
       cout << "[" << board.StringAt(move.source) << "] " << move << endl;
       board.Update(move);

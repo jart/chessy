@@ -64,7 +64,7 @@ const array<string, kPieceTypes> kPieceNames = {{
   "Bishop",
   "Rook",
   "Queen",
-  "Knight",
+  "King",
 }};
 
 typedef int8_t Offset;
@@ -105,6 +105,8 @@ const string kColorGray = "\x1b[38;5;241m";
 const string kColorBlack = "\x1b[30m";
 const string kColorWhiteBg = "\x1b[47m";
 const string kColorGrayBg = "\x1b[48;5;246m";
+
+string ColorString(Color color);
 
 // 64-bit existential piece-type representation
 typedef bitset<kSquares> BitBoard;
@@ -237,7 +239,9 @@ class Board {
   void Print(std::ostream& os) const;
 
   inline Color color() { return color_; }
+  inline string color_str() const { return ColorString(color_); }
   inline void set_color(Color color) { color_ = color; }
+  inline Move last_move() const { return last_move_; }
 
   BitBoard Friends();
   BitBoard Enemies();
@@ -263,6 +267,8 @@ class Board {
   PieceTable piece_table;
   SquareTable square_table_;  // Indexed by Square
   Color color_;
+
+  Move last_move_ = kInvalidMove;
 };
 
 }  // chessy
