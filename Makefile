@@ -6,8 +6,8 @@ FLAGS=-std=$(STD) -g -O0 -Wall -Werror
 
 all: chessy
 
-chessy: chessy.o board.o
-	$(CC) $(FLAGS) chessy.o board.o -o chessy
+chessy: chessy.o board.o bot.o
+	$(CC) $(FLAGS) chessy.o board.o bot.o -o chessy
 
 chessy.o: chessy.cc chessy.h
 	$(CC) $(FLAGS) -c chessy.cc -o chessy.o
