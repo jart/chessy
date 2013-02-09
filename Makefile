@@ -9,13 +9,13 @@ all: chessy
 chessy: chessy.o board.o
 	$(CC) $(FLAGS) chessy.o board.o -o chessy
 
-chessy.o: chessy.cc
+chessy.o: chessy.cc chessy.h
 	$(CC) $(FLAGS) -c chessy.cc -o chessy.o
 
 board.o: board.cc board.h
 	$(CC) $(FLAGS) -c board.cc -o board.o
 
-bot.o: bot.cc
+bot.o: bot.cc bot.h
 	$(CC) $(FLAGS) -c bot.cc -o bot.o
 
 clean:

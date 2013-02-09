@@ -8,7 +8,6 @@
 #include <cstdint>
 #include <string>
 
-using std::string;
 
 namespace chessy {
 
@@ -28,6 +27,6 @@ GameState g_state = kNone;
 
 void GameLoop();
 
-}
+}  // chessy
 
-#endif  // CHESY_BOT_H_
+#endif  // CHESSY_BOT_H_

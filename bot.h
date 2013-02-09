@@ -12,4 +12,4 @@ const kMaxThinkTime = 5;
 // Chessy will continuously think in another thread
 void Think();
 
-#endif  // CHESY_BOT_H_
+#endif  // CHESSY_BOT_H_
