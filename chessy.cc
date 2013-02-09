@@ -29,6 +29,8 @@ namespace chessy {
 
 GameMode g_mode = kMirror;
 GameState g_state = kNone;
+
+// Set g_dbg >= 2 for search tree step-through verbosity
 int g_dbg = 1;
 int g_nodes_searched = 0;
 int g_nodes_pruned = 0;
@@ -38,8 +40,9 @@ int NegaMax(Board* board, int depth, int alpha, int beta) {
   // Debug with branch factor and window
   if (g_dbg > 1) {
     DepthCout(depth);
+    const auto& last_move = board->last_move();
     cout << "" << moves.size() << "-< ("
-         << ColorString(Toggle(board->color())) << " " << board->last_move()
+         << ColorString(Toggle(board->color())) << " " << last_move 
          << ") a[" << alpha
          << "] b[" << beta << "] >- ";
   }
@@ -127,28 +130,6 @@ Move BestMove(Board* board) {
          << "   search savings: " << savings << "%" << endl;
   }
   return best;
-}
-
-bool CompareMoves(const Move& a, const Move& b) {
-  if (a.score == b.score) {
-    return std::rand() % 2 == 0;
-  } else {
-    return a.score > b.score;
-  }
-}
-
-void AddMove(vector<Move>* moves, const Move& move) {
-//  cout << "Adding move " << move << endl;
-  moves->push_back(move);
-  std::push_heap(moves->begin(), moves->end(), CompareMoves);
-}
-
-// TODO: Turn into transposition table
-Move GetMove(vector<Move>* moves) {
-  std::pop_heap(moves->begin(), moves->end(), CompareMoves);
-  Move move = moves->back();
-  moves->pop_back();
-  return move;
 }
 
 Move ValidateAlgebraicMove(const string& input) {

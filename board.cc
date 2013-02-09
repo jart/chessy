@@ -144,6 +144,29 @@ MoveType Board::QualifySquare(Square square) {
   return kRegular;
 }
 
+
+bool CompareMoves(const Move& a, const Move& b) {
+  if (a.priority == b.priority) {
+    return std::rand() % 2 == 0;
+  } else {
+    return a.priority < b.priority;
+  }
+}
+
+void AddMove(vector<Move>* moves, const Move& move) {
+//  cout << "Adding move " << move << endl;
+  moves->push_back(move);
+  std::push_heap(moves->begin(), moves->end(), CompareMoves);
+}
+
+// TODO: Turn into transposition table
+Move GetMove(vector<Move>* moves) {
+  std::pop_heap(moves->begin(), moves->end(), CompareMoves);
+  Move move = moves->back();
+  moves->pop_back();
+  return move;
+}
+
 Move Board::ComposeMove(Square source, Square dest) const {
   const auto& state = square_table_[dest];
   if (state.empty) {

@@ -158,29 +158,40 @@ const BoardPosition kInitialBoardPosition = {{
   BitBoard("00010000") << (kRow * 7),  // Black King
 }};
 
+const int kMoveTypes = 7;
 enum MoveType {
   kInvalid = 0,
   kRegular = 1,
   kAttack = 2,
   kCastle = 3,
   kCastleQueen = 4,
-  kTentative = 5,
+  kCheck = 5,
+  kTentative = 6,
 };
+const array<string, kMoveTypes> kMoveTypeNames = {{
+  "Invalid",
+  "Regular",
+  "Capture",
+  "Castle",
+  "Queen-side Castle",
+  "Check",
+}};
 
 struct Move {
   Move() : type(kInvalid) {}
   explicit Move(MoveType type) : type(type) {}
   Move(MoveType type, Square source, Square dest)
-      : type(type), source(source), dest(dest), captured(kPawn) {}
+      : type(type), source(source), dest(dest), captured(kPawn),
+        priority(0) {}
   Move(MoveType type, Square source, Square dest, Piece captured)
       : type(type), source(source), dest(dest), captured(captured),
-        score(kPieceValue[captured]) {}
+        priority(kPieceValue[captured]) {}
 
   MoveType type : 3;
   Square source : 7;
   Square dest : 7;
   Piece captured : 3;
-  int score;
+  int priority;  // Move ordering
 };
 bool operator==(const Move &a, const Move &b);
 const Move kInvalidMove = Move();
