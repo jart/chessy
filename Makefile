@@ -15,6 +15,9 @@ chessy.o: chessy.cc
 board.o: board.cc board.h
 	$(CC) $(FLAGS) -c board.cc -o board.o
 
+bot.o: bot.cc
+	$(CC) $(FLAGS) -c bot.cc -o bot.o
+
 clean:
 	rm -f chessy *.o
 

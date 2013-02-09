@@ -71,6 +71,10 @@ void Board::Update(const Move& move) {
   dest.color = source.color;
 
   color_ = Toggle(color_);
+
+  // Flush memoized bit masks
+  friends_ = kEmpty;
+  enemies_ = kEmpty;
 }
 
 void Board::Undo(const Move& move) {
@@ -92,6 +96,10 @@ void Board::Undo(const Move& move) {
  
   color_ = Toggle(color_);
   source.color = color_;
+
+  // Flush memoized bit masks
+  friends_ = kEmpty;
+  enemies_ = kEmpty;
 }
 
 vector<Move> Board::PossibleMoves() const {
@@ -121,8 +129,30 @@ vector<Move> Board::PossibleMoves() const {
         break;
     }
   }
-//  cout << "Possible moves: " << res.size() << endl;
+
   return res;
+}
+
+MoveType Board::QualifySquare(Square square) {
+  if (Friends()[square]) {
+    return kInvalid;
+  }
+  if (Enemies()[square]) {
+    return kAttack;
+  }
+  return kRegular;
+}
+
+Move Board::ComposeMove(Square source, Square dest) const {
+  const auto& state = square_table_[dest];
+  if (state.empty) {
+    return Move(kRegular, source, dest);
+  }
+  if (state.color == color_) {
+    return Move(kInvalid, source, dest);
+  }
+  return Move(kAttack, source, dest, state.piece);
+  // TODO:  King conditions and Queening
 }
 
 Move Board::TryMove(Square source, Delta delta) const {
@@ -131,18 +161,10 @@ Move Board::TryMove(Square source, Delta delta) const {
   Offset file = File(source) + delta.file;
   if ((rank < 0 || rank >= kRow) || 
      (file < 0 || file >= kRow)) {
-    return Move(kInvalid);
+    return kInvalidMove;
   }
   Square dest = rank * kRow + file;
-  const auto& loc = square_table_[dest];
-  if (loc.empty) {
-    return Move(kRegular, source, dest);
-  }
-  if (loc.color == color_) {
-    return Move(kInvalid);
-  }
-  return Move(kAttack, source, dest, loc.piece);
-  // TODO:  King conditions and Queening
+  return ComposeMove(source, dest);
 }
 
 void Board::PawnMoves(vector<Move>* res, Square source) const {
@@ -238,12 +260,16 @@ BitBoard Board::GetBitBoard(Color color, Piece piece) const {
   return board_[PieceIndex(color, piece)];
 }
 
-BitBoard Board::Friends() const {
-  return PositionMask(color_);
+BitBoard Board::Friends() {
+  if (kEmpty == friends_)
+    friends_ = PositionMask(color_);
+  return friends_;
 }
 
-BitBoard Board::Enemies() const {
-  return PositionMask(Toggle(color_));
+BitBoard Board::Enemies() {
+  if (kEmpty == enemies_)
+    enemies_ = PositionMask(Toggle(color_));
+  return enemies_;
 }
 
 BitBoard Board::PositionMask(Color color) const {
@@ -252,6 +278,27 @@ BitBoard Board::PositionMask(Color color) const {
     mask |= GetBitBoard(color, static_cast<Piece>(piece));
   }
   return mask;
+}
+
+Piece Board::PieceAt(Square square) const {
+  const auto& state = square_table_[square];
+  if (state.empty) {
+    return kNoPiece;
+  }
+  return state.piece;
+}
+
+Color Board::ColorAt(Square square) const {
+  return square_table_[square].color;
+}
+
+string Board::StringAt(Square square) const {
+  Piece piece = PieceAt(square);
+  if (kNoPiece == piece) {
+    return "Empty";
+  }
+  string name = kPieceNames[piece];
+  return (kWhite == ColorAt(square) ? "White " : "Black ") + name;
 }
 
 void Board::Print(std::ostream& os) const {
