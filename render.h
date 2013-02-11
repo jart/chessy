@@ -8,36 +8,70 @@
 #include <iostream>
 
 #include "board.h"
+#include "move.h"
 
 namespace chessy {
 
-// Terminal coloring
-const string kColorReset = "\x1b[0m";
-const string kColorGray = "\x1b[38;5;241m";
-const string kColorBlack = "\x1b[30m";
-const string kColorWhiteBg = "\x1b[47m";
-const string kColorGrayBg = "\x1b[48;5;246m";
+  namespace terminal {
+    // Terminal coloring
+    const string kReset = "\x1b[0m";
+    const string kGray = "\x1b[38;5;241m";
+    const string kBlack = "\x1b[30m";
+    const string kWhiteBg = "\x1b[47m";
+    const string kGrayBg = "\x1b[48;5;246m";
+  }
 
-// Some terminals are happy, and some are SAD!
-#define UNICODE
+// #define UNICODE
+  // Some terminals are happy, and some are SAD!
+  // Disable UNICODE to print in pure ascii rather than use the specal chess 
+  // characters.
+
 #ifdef UNICODE
-const std::array<string, kPieceTypes * kColors> kPieceString = {{
-  u8"♙", u8"♘", u8"♗", u8"♖", u8"♕", u8"♔",
-  u8"♟", u8"♞", u8"♝", u8"♜", u8"♛", u8"♚",
-}};
+  const std::array<string, kPieceTypes * kColors> kPieceString = {{
+    u8"♙", u8"♘", u8"♗", u8"♖", u8"♕", u8"♔",
+    u8"♟", u8"♞", u8"♝", u8"♜", u8"♛", u8"♚",
+  }};
+
 #else
-const std::array<string, kPieceTypes * kColors> kPieceString = {{
-   "P", "N", "B", "R", "Q", "K",
-   "P", "N", "B", "R", "Q", "K",
-}};
+  const std::array<string, kPieceTypes * kColors> kPieceString = {{
+     "P", "N", "B", "R", "Q", "K",
+     "p", "n", "b", "r", "q", "k",
+  }};
 #endif
 
-std::ostream& operator<<(std::ostream& os, const Board& board);
-std::ostream& operator<<(std::ostream& os, const Square& square);
-std::ostream& operator<<(std::ostream& os, const Move& move);
+  namespace names {
 
-void DepthCout(int depth);
-string ColorString(Color color);
+    // Names for all the things!
+    const array<string, kMoveTypes> kMoveTypes = {{
+      "Invalid",
+      "Regular",
+      "Capture",
+      "Castle",
+      "Queen-side Castle",
+      "Check",
+      "NullMove",
+      "Tentative",
+    }};
+
+    const array<string, kPieceTypes> kPieces = {{
+      "Pawn",
+      "Knight",
+      "Bishop",
+      "Rook",
+      "Queen",
+      "King",
+    }};
+
+  }
+
+  std::ostream& operator<<(std::ostream& os, const Board& board);
+  std::ostream& operator<<(std::ostream& os, const Square& square);
+  std::ostream& operator<<(std::ostream& os, const MoveType& type);
+  std::ostream& operator<<(std::ostream& os, const Move& move);
+  std::ostream& operator<<(std::ostream& os, const Piece& piece);
+
+  void DepthCout(int depth);
+  string ColorString(Color color);
 
 
 }  // chessy

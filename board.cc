@@ -4,317 +4,442 @@
 #include <cstdlib>
 #include <cassert>
 #include <iostream>
-#include <algorithm>
 
 #include "board.h"
+#include "constants.h"
+#include "move.h"
+#include "render.h"
 
-// using std::array;
 using std::cout;
 using std::endl;
 
 namespace chessy {
 
-inline int Rank(Square square) {
-  return square / kRow;
-}
+  Board::Board() : board_(kInitialBoardPosition), color_(kWhite) {
 
-inline int File(Square square) {
-  return square % kRow;
-}
-
-inline Color Toggle(Color color) {
-  return (color == kWhite) ? kBlack : kWhite;
-}
-
-inline int PieceIndex(Color color, Piece piece) {
-  return piece + (color == kWhite? 0 : kPieceTypes);
-}
-
-Board::Board() : board_(kInitialBoardPosition), color_(kWhite) {
-
-  // Sync the SquareTable and PieceTable according to BitBoards
-  for (int square = 0; square < kSquares; ++square) {
-    square_table_[square] = SquareState(square);
-    for (int piece = kPawn; piece < kPieceTypes; ++piece) {
-      Piece sc_piece = static_cast<Piece>(piece);
-      if (GetBitBoard(kWhite, sc_piece)[square]) {
-        square_table_[square] = SquareState(kWhite, sc_piece, square);
-        break;
-      }
-      if (GetBitBoard(kBlack, sc_piece)[square]) {
-        square_table_[square] = SquareState(kBlack, sc_piece, square);
-        break;
+    // Sync the SquareTable and PieceTable according to BitBoards
+    for (int square = 0; square < square::kTotal; ++square) {
+      square_table_[square].index = square;
+      for (int piece = kPawn; piece < kPieceTypes; ++piece) {
+        Piece sc_piece = static_cast<Piece>(piece);
+        if (GetBitBoard(kWhite, sc_piece)[square]) {
+          square_table_[square] = SquareState(kWhite, sc_piece, square);
+          break;
+        }
+        if (GetBitBoard(kBlack, sc_piece)[square]) {
+          square_table_[square] = SquareState(kBlack, sc_piece, square);
+          break;
+        }
       }
     }
+
+    king_square_[kWhite] = 4;
+    king_square_[kBlack] = 60;
   }
-}
 
-void Board::Update(const Move& move) {
-  assert(move.type != kInvalid);
-  // if (move.captured == kKing) {
-  //   switch (color_) {
-  //     case kWhite:
-  //       cout << "White wins!" << endl;
-  //       exit(0);
-  //     case kBlack:
-  //       cout << "Black wins!" << endl;
-  //       exit(0);
-  //   }
-  // }
-  auto& source = square_table_[move.source];
-  auto& dest = square_table_[move.dest];
-  assert(!source.empty);
+  void Board::Update(const Move& move) {
+    assert(kInvalid   != move.type);
+    assert(kTentative != move.type);
 
-  source.empty = true;
-  dest.empty = false;
-  dest.piece = source.piece;
-  dest.color = source.color;
+    if (g_dbg > 3)
+      cout << "Board update: " << move << endl;
 
-  color_ = Toggle(color_);
+    // Null Moves are like "passing", which is invalid in real chess but can be 
+    // abused for our gametree
+    if (kNullMove == move.type) {
+      color_ = Toggle(color_);    
+      friends_ ^= enemies_ ^= friends_ ^= enemies_;
+      attacked_ = kEmpty;
+      return;
+    }
 
-  // Flush memoized bit masks
-  friends_ = kEmpty;
-  enemies_ = kEmpty;
-  last_move_ = move;
-}
+    auto& source = square_table_[square::Index(move.source)];
+    auto& dest = square_table_[square::Index(move.dest)];
+    assert(!source.empty);
 
-void Board::Undo(const Move& move) {
-  assert(move.type != kInvalid);
-  auto& source = square_table_[move.source];
-  auto& dest = square_table_[move.dest];
-  assert(!dest.empty);
+    // Update king index
+    // TODO: Implement PieceTable (which generalizes this) for faster lookups
+    //if (kKing == source.piece) {
+    //  king_square_[color_] = square::Getx88(dest.index);
+    //}
 
-  source.empty = false;
-  source.piece = dest.piece;
-
-  if (move.type == kAttack) {
+    source.empty = true;
     dest.empty = false;
-    dest.color = color_;
-    dest.piece = move.captured;
-  } else {
-    dest.empty = true;
+    dest.piece = source.piece;
+    dest.color = source.color;
+
+    color_ = Toggle(color_);
+
+    // Flush memoized bit masks
+    friends_ = kEmpty;
+    enemies_ = kEmpty;
+    attacked_ = kEmpty;
+
+    // TODO: Transposition table which restores these masks
+
+    last_move_ = move;
   }
- 
-  color_ = Toggle(color_);
-  source.color = color_;
 
-  // Flush memoized bit masks
-  friends_ = kEmpty;
-  enemies_ = kEmpty;
-}
+  void Board::Undo(const Move& move) {
+    //assert(last_move_ == move);
+    assert(move.type != kInvalid);
+    auto& source = square_table_[square::Index(move.source)];
+    auto& dest = square_table_[square::Index(move.dest)];
 
-vector<Move> Board::PossibleMoves() const {
-  vector<Move> res;
-  for (const auto& state : square_table_) {
-    if (state.empty || state.color != color_) {
-      continue;
+    if (g_dbg > 3)
+      cout << "Board undo: " << move << endl;
+
+    if (kNullMove == move.type) {
+      color_ = Toggle(color_);    
+      friends_ ^= enemies_ ^= friends_ ^= enemies_;
+      attacked_ = kEmpty;
+      return;
     }
-    switch (state.piece) {
-      case kPawn:
-        PawnMoves(&res, state.square);
-        break;
-      case kKnight:
-        KnightMoves(&res, state.square);
-        break;
-      case kBishop:
-        BishopMoves(&res, state.square);
-        break;
-      case kRook:
-        RookMoves(&res, state.square);
-        break;
-      case kQueen:
-        QueenMoves(&res, state.square);
-        break;
-      case kKing:
-        KingMoves(&res, state.square);
-        break;
+    assert(!dest.empty);
+
+    source.empty = false;
+    source.piece = dest.piece;
+
+    if (move.type == kAttack) {
+      dest.empty = false;
+      dest.color = color_;
+      dest.piece = move.captured;
+    } else {
+      dest.empty = true;
     }
+   
+    color_ = Toggle(color_);
+    source.color = color_;
+
+    // Update king index
+    //if (kKing == source.piece) {
+    //  king_square_[color_] = square::Getx88(dest.index);
+    //}
+
+    // Flush memoized bit masks
+    friends_ = kEmpty;
+    enemies_ = kEmpty;
+    attacked_ = kEmpty;
+    // TODO: Transposition table which restores these masks
   }
 
-  return res;
-}
+  Moves Board::PossibleMoves() {
+    Moves res;
+    for (const auto& state : square_table_) {
+      if (state.empty || state.color != color_)
+        continue;
+      Squares targets = Squares();
+      Square square = square::Getx88(state.index);
+      switch (state.piece) {
+        case kPawn:
+          targets = PawnTargets(square);
+          break;
+        case kKnight:
+          targets = KnightTargets(square);
+          break;
+        case kBishop:
+          targets = BishopTargets(square);
+          break;
+        case kRook:
+          targets = RookTargets(square);
+          break;
+        case kQueen:
+          targets = QueenTargets(square);
+          break;
+        case kKing:
+          targets = KingTargets(square);
+          break;
+      }
 
-MoveType Board::QualifySquare(Square square) {
-  if (Friends()[square]) {
-    return kInvalid;
-  }
-  if (Enemies()[square]) {
-    return kAttack;
-  }
-  return kRegular;
-}
-
-
-bool CompareMoves(const Move& a, const Move& b) {
-  if (a.priority == b.priority) {
-    return std::rand() % 2 == 0;
-  } else {
-    return a.priority < b.priority;
-  }
-}
-
-void AddMove(vector<Move>* moves, const Move& move) {
-//  cout << "Adding move " << move << endl;
-  moves->push_back(move);
-  std::push_heap(moves->begin(), moves->end(), CompareMoves);
-}
-
-// TODO: Turn into transposition table
-Move GetMove(vector<Move>* moves) {
-  std::pop_heap(moves->begin(), moves->end(), CompareMoves);
-  Move move = moves->back();
-  moves->pop_back();
-  return move;
-}
-
-Move Board::ComposeMove(Square source, Square dest) const {
-  const auto& state = square_table_[dest];
-  if (state.empty) {
-    return Move(kRegular, source, dest);
-  }
-  if (state.color == color_) {
-    return Move(kInvalid, source, dest);
-  }
-  return Move(kAttack, source, dest, state.piece);
-  // TODO:  King conditions and Queening
-}
-
-Move Board::TryMove(Square source, Delta delta) const {
-  // Check boundaries
-  Offset rank = Rank(source) + delta.rank;
-  Offset file = File(source) + delta.file;
-  if ((rank < 0 || rank >= kRow) || 
-     (file < 0 || file >= kRow)) {
-    return kInvalidMove;
-  }
-  Square dest = rank * kRow + file;
-  return ComposeMove(source, dest);
-}
-
-void Board::PawnMoves(vector<Move>* res, Square source) const {
-  Delta forward = (color_ == kWhite ? kU : kD);
-  Move move;
-  move = TryMove(source, forward + kR);
-  if (move.type == kAttack) {
-    AddMove(res, move);
-  }
-  move = TryMove(source, forward + kL);
-  if (move.type == kAttack) {
-    AddMove(res, move);
-  }
-  move = TryMove(source, forward);
-  if (move.type == kRegular) {
-    AddMove(res, move);
-    if ((color_ == kWhite && Rank(source) == 1) ||
-        (color_ == kBlack && Rank(source) == 6)) {
-      move = TryMove(source, forward * 2);
-      if (move.type == kRegular) {
-        AddMove(res, move);
+      for (Square dest : targets) {
+        AddMove(&res, ComposeMove(square, dest));
       }
     }
+    // Flatten move heap into list
+    return res;
   }
-  // TODO: Promotion
-  // TODO: En Passant
-}
 
-void Board::KnightMoves(vector<Move>* res, Square source) const {
-  for (const auto delta : kKnightDeltas) {
-    Move move = TryMove(source, delta);
-    if (move.type != kInvalid) {
-      AddMove(res, move);
+
+  // --- Move generation ---
+
+  MoveType Board::QualifyTarget(Square target) {
+    if (!square::Valid(target))
+      return kInvalid;  // 0x88 off-the-board
+  
+    int index = square::Index(target);
+    const auto& state = square_table_[index];
+
+    if (state.empty)
+      return kRegular;
+    
+    if (state.color == color_)
+      return kInvalid;
+
+    return kAttack;
+    /*
+    // Cannot move onto a square occupied by self 
+    if (Friends()[index])
+      return kInvalid;
+
+    // Moving onto square occupid by enemy is an attack
+    if (Enemies()[index])
+      return kAttack;
+    // Moving to an empty square is (usually) a regular move
+    return kRegular;
+    */
+  }
+
+  Move Board::ComposeMove(Square source, Square dest) {
+    const auto& state = square_table_[square::Index(dest)];
+
+    MoveType type = QualifyTarget(dest);
+    if (kInvalid == type ||
+        (kPawn == PieceAt(source) && kAttack == type && (square::File(source) == square::File(dest))))
+      return Move(kInvalid, source, dest);
+
+    if (kAttack == type)
+      return Move(kAttack, source, dest, state.piece);
+
+    return Move(kRegular, source, dest);
+
+    // TODO:  King conditions and Queening
+  }
+
+  Squares Board::PawnTargets(const Square source) {
+    Squares res;
+
+    // Pawns are the only piece with directional limitation.
+    Offset forward = (color_ == kWhite ? deltas::kU : deltas::kD);
+    Square front = source + forward;
+    Square diagR = front + deltas::kR;
+    Square diagL = front + deltas::kL;
+
+    // Check diagonal attacks
+    if (kAttack == QualifyTarget(diagR))
+      res.emplace_front(diagR);
+
+    if (kAttack == QualifyTarget(diagL))
+      res.emplace_front(diagL);
+
+    // Forward moves (no attack)
+    if (kRegular == QualifyTarget(front)) {
+      res.emplace_front(front);
+
+      // If it's the pawn's first move, check for an advance
+      if ((color_ == kWhite && square::Rank(source) == 1) ||
+          (color_ == kBlack && square::Rank(source) == 6)) {
+
+        Square advance = front + forward;
+        if (kRegular == QualifyTarget(advance)) {
+          res.emplace_front(advance);
+
+          // TODO: Set En Passant Square at |front| (which is now behind)
+        }
+      }
+    }
+
+    // TODO: Promotion
+    // TODO: En Passant
+
+    return res;
+  }
+  Squares Board::KnightTargets(Square source) {
+    Squares res;
+    for (const auto delta : deltas::kKnight) {
+      Square target = source + delta;
+      if (kInvalid != QualifyTarget(target))
+        res.emplace_front(target);
+    }
+    return res;
+  }
+  Squares Board::BishopTargets(Square source) {
+    Squares res;
+    for (const auto delta : deltas::kDiagonal) {
+      SlidingTargets(&res, source,  delta);
+    }
+    return res;
+  }
+  Squares Board::RookTargets(Square source) {
+    Squares res;
+    for (const auto delta : deltas::kOrthogonal)
+      SlidingTargets(&res, source, delta);
+    return res;
+  }
+  Squares Board::QueenTargets(Square source) {
+    Squares res;
+    for (const auto delta : deltas::kOmnigonal)
+      SlidingTargets(&res, source, delta);
+    return res;
+/*    Squares res;
+    Squares diagonals = BishopTargets(source);
+    Squares orthogonals = RookTargets(source);
+    res.splice_after(res.cend(), diagonals, diagonals.cbegin());
+    res.splice_after(res.cend(), orthogonals, orthogonals.cbegin());
+    return res; */
+  }
+  Squares Board::KingTargets(Square source) {
+    Squares res;
+    for (const auto delta : deltas::kOmnigonal) {
+      Square target = source + delta;
+      if (kInvalid != QualifyTarget(target))
+        res.emplace_front(target);
+    }
+    return res;
+  }
+  void Board::SlidingTargets(Squares* res, Square source, Offset delta) {
+    Square dest = source + delta;
+
+    MoveType type = kRegular;
+    while (kRegular == type) {
+      type = QualifyTarget(dest);
+      if (kInvalid != type)
+        res->emplace_front(dest);
+      dest += delta;
     }
   }
-}
 
-void Board::SlidingMoves(vector<Move>* res, Square source, Delta d) const {
-  Delta dest = d;
-  Move move(kRegular);
-  while (move.type == kRegular) {
-    move = TryMove(source, dest);
-    if (move.type != kInvalid) {
-      AddMove(res, move);
+
+  int Board::Score() const {
+    int us = 0;
+    int them = 0;
+    for (const auto& state : square_table_) {
+      if (state.empty) {
+        continue;
+      }
+      if (color_ == state.color) {
+        us += kPieceValues[state.piece];
+      } else {
+        them += kPieceValues[state.piece];
+      }
     }
-  dest += d;
+    return us - them;
   }
-}
 
-void Board::BishopMoves(vector<Move>* res, Square source) const {
-  for (const auto delta : kDiagonals) {
-    SlidingMoves(res, source,  delta);
+  // --- Bit board helpers ---
+  BitBoard Board::Friends() {
+    if (kEmpty == friends_)
+      friends_ = PositionMask(color_);
+    return friends_;
   }
-}
 
-void Board::RookMoves(vector<Move>* res, Square source) const {
-  for (const auto delta : kOrthogonals) {
-    SlidingMoves(res, source, delta);
+  BitBoard Board::Enemies() {
+    if (kEmpty == enemies_)
+      enemies_ = PositionMask(Toggle(color_));
+    return enemies_;
   }
-}
-
-void Board::QueenMoves(vector<Move>* res, Square source) const {
-  BishopMoves(res, source);
-  RookMoves(res, source);
-}
-
-void Board::KingMoves(vector<Move>* res, Square source) const {
-  for (const auto delta : kOmnigonals) {
-    Move move = TryMove(source, delta);
-    if (move.type != kInvalid) {
-      AddMove(res, move);
+  BitBoard Board::PositionMask(Color color) const {
+    BitBoard mask = kEmpty;
+    for (int piece = 0 ; piece < kPieceTypes ; ++piece) {
+      mask |= GetBitBoard(color, static_cast<Piece>(piece));
     }
+    return mask;
   }
-}
 
-int Board::Score() const {
-  int us = 0;
-  int them = 0;
-  for (const auto& state : square_table_) {
+  BitBoard Board::GetBitBoard(Color color, Piece piece) const {
+    return board_[PieceIndex(color, piece)];
+  }
+  Piece Board::PieceAt(Square square) const {
+    const auto& state = square_table_[square::Index(square)];
     if (state.empty) {
-      continue;
+      return kNoPiece;
     }
-    if (color_ == state.color) {
-      us += kPieceValue[state.piece];
-    } else {
-      them += kPieceValue[state.piece];
+    return state.piece;
+  }
+
+  Color Board::ColorAt(Square square) const {
+    return square_table_[square::Index(square)].color;
+  }
+
+
+  void Board::SetAttacked(Square square) {
+    attacked_[square] = 1;
+  }
+  bool Board::SquareAttacked(Square square, Color color) const {
+    if (color == color_) {
+      return attacked_[square] == 1;
     }
+
+    /*
+    const auto& state = board->square_table_[square];
+    if (kEmpty == attacked_) {
+      return false;
+    }
+    attacked_
+    */
+    return false;
   }
-  return us - them;
-}
 
-BitBoard Board::GetBitBoard(Color color, Piece piece) const {
-  return board_[PieceIndex(color, piece)];
-}
-
-BitBoard Board::Friends() {
-  if (kEmpty == friends_)
-    friends_ = PositionMask(color_);
-  return friends_;
-}
-
-BitBoard Board::Enemies() {
-  if (kEmpty == enemies_)
-    enemies_ = PositionMask(Toggle(color_));
-  return enemies_;
-}
-
-BitBoard Board::PositionMask(Color color) const {
-  BitBoard mask = kEmpty;
-  for (int piece = 0 ; piece < kPieceTypes ; ++piece) {
-    mask |= GetBitBoard(color, static_cast<Piece>(piece));
+  bool ValidMove(Board* board, const Move move) {
+    // Ensure that after this move, the board is not in check
+    bool res = true;
+    Color color = board->color();
+    board->Update(move);
+    board->PossibleMoves();
+    res = InCheck(board, color);
+    board->Undo(move);
+    return res;
   }
-  return mask;
-}
 
-Piece Board::PieceAt(Square square) const {
-  const auto& state = square_table_[square];
-  if (state.empty) {
-    return kNoPiece;
+  Square Board::KingSquare(Color color) const {
+    return king_square_[color];   
   }
-  return state.piece;
-}
 
-Color Board::ColorAt(Square square) const {
-  return square_table_[square].color;
-}
+  //bool Board::InCheck() {
+  //  return InCheck(this, color_);
+  //}
 
+  bool InCheck(Board* board, Color color) {
+    return false;
+    // Is |color| king under attack?
+    Square king = board->KingSquare(color);
+
+    // Checking if enemy is in check
+    if (color != board->color()) {
+      return board->SquareAttacked(king, color);
+    }
+
+    // Checking if current player is in check (more expensive for now)
+    bool res = false;
+    Move nm(kNullMove);
+    board->Update(nm);
+    board->PossibleMoves();
+    res = board->SquareAttacked(king, board->color());
+    board->Undo(nm);
+    
+    return res;
+  }
+
+  bool Checkmate(Board* board) {
+    return false;
+    Color color = board->color();
+    if (!InCheck(board, color)) {
+      return false;
+    }
+
+    // Assume checkmate until proven innocent
+    bool res = true;
+    Move nm(kNullMove);
+    for (const auto& move : board->PossibleMoves()) {
+      board->Update(move);
+      board->Update(nm);
+
+      assert(color == board->color());
+      res = InCheck(board, color);
+
+      board->Undo(nm);
+      board->Undo(move);
+      if (!res)
+        return false;
+    }
+
+    // No available move gets out of Check
+    return true;
+  }
+
+  bool Stalemate(Board* board) {
+    const auto& moves = board->PossibleMoves();
+    // TODO: Repeated position stalemate checks
+    return moves.size() == 0;
+  }
 
 }  // chessy

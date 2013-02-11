@@ -13,8 +13,10 @@ const int kMinScore = -99999;
 const int kMaxScore = 99999;
 const int kMaxDepth = 2;
 
-// Chessy will continuously think in another thread
+// Chessy will continuously think in another thread.
+// "thinking" here is just improving the depth and accuracy of the game tree.
 void Think();
+
 
 }  // chessy
 

@@ -4,7 +4,7 @@
 
 namespace chessy {
 
-void Think() {
-}
+  void Think() {
+  }
 
 } // chessy
