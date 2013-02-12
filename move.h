@@ -6,7 +6,6 @@
 
 #include <forward_list>
 #include <queue>
-#include <vector>
 
 #include "chessy.h"
 
@@ -20,62 +19,64 @@ namespace chessy {
   const Bitx88 kInvalidMask = 0x88;
   const Offset kRow = 8;
 
-  namespace square {
+namespace square {
 
-    const int kTotal        = 0x40;  // 64
-    const Offset kRank      = 0x10;  // 16
-    const Offset kFile      = 0x01;
-    const Offset kRankShift = 4;
-    const Bitx88 kFileMask  = 0x07;
-    const Square kInvalid   = 0x80;  // Default "invalid" square
+  const int kTotal        = 0x40;  // 64
+  const Offset kRank      = 0x10;  // 16
+  const Offset kFile      = 0x01;
+  const Offset kRankShift = 4;
+  const Bitx88 kFileMask  = 0x07;
+  const Square kInvalid   = 0x80;  // Default "invalid" square
 
-    // Conversions between Rank, File numbers, Indices, and 0x88
-    Offset Rank(Square square);
-    Offset File(Square square);
-    Square Getx88(Offset rank, Offset file);
-    Square Getx88(char f, char r);
-    Square Getx88(int index);
-    int Index(Square square);
+  // Conversions between Rank, File numbers, Indices, and 0x88
+  Offset Rank(Square square);
+  Offset File(Square square);
+  Square Getx88(Offset rank, Offset file);
+  Square Getx88(char f, char r);
+  Square Getx88(int index);
+  int Index(Square square);
 
-    bool Valid(Square square);
-  }
+  bool Valid(Square square);
+}  // square
+
 
   // During moves generation, we sometimes generate lists of squares without 
   // needing random lookup, but certainly requiring fast insertion and 
   // unidirectional traversal and space efficiency
   typedef forward_list<Square> Squares;
 
-  namespace deltas {
-    // --- Offsets between 0x88 squares (+) ---
-    
-    const Offset kU = square::kRank;
-    const Offset kD = -kU;
-    const Offset kR = square::kFile;
-    const Offset kL = -kR;
-    const Offset kUR = kU + kR;
-    const Offset kUL = kU + kL;
-    const Offset kDR = kD + kR;
-    const Offset kDL = kD + kL;
 
-    const array<Offset, 4> kOrthogonal = {{
-      kU, kD, kR, kL,
-    }};
-    const array<Offset, 4> kDiagonal = {{
-      kUR, kUL, kDR, kDL,
-    }};
-    const array<Offset, 8> kOmnigonal = {{
-      kU, kD, kR, kL, kUR, kUL, kDR, kDL,
-    }};
+// --- Offsets between 0x88 squares (+) ---
+namespace deltas {
+  
+  const Offset kU = square::kRank;
+  const Offset kD = -kU;
+  const Offset kR = square::kFile;
+  const Offset kL = -kR;
+  const Offset kUR = kU + kR;
+  const Offset kUL = kU + kL;
+  const Offset kDR = kD + kR;
+  const Offset kDL = kD + kL;
 
-    // The 8 'L' shapes
-    const array<Offset, 8> kKnight = {{
-      kU + kUR, kU + kUL,
-      kD + kDR, kD + kDL,
-      kR + kUR, kR + kDR,
-      kL + kUL, kL + kDL,
-    }};
+  const array<Offset, 4> kOrthogonal = {{
+    kU, kD, kR, kL,
+  }};
+  const array<Offset, 4> kDiagonal = {{
+    kUR, kUL, kDR, kDL,
+  }};
+  const array<Offset, 8> kOmnigonal = {{
+    kU, kD, kR, kL, kUR, kUL, kDR, kDL,
+  }};
 
-  }
+  // The 8 'L' shapes
+  const array<Offset, 8> kKnight = {{
+    kU + kUR, kU + kUL,
+    kD + kDR, kD + kDL,
+    kR + kUR, kR + kDR,
+    kL + kUL, kL + kDL,
+  }};
+
+}  // deltas
 
 
   // --- Move representation ---
@@ -120,7 +121,6 @@ namespace chessy {
 
   void AddMove(Moves* moves, const Move& move);
   Move GetMove(Moves* moves);
-
 
 } // chessy
 

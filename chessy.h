@@ -11,6 +11,7 @@
 #include <string>
 
 using std::array;
+using std::string;
 using std::bitset;
 
 
@@ -56,10 +57,6 @@ namespace chessy {
   extern GameState g_state;
 
   extern int g_dbg;  // Debug level from 0-2
-
-  // search counters
-  extern int g_nodes_searched;
-  extern int g_nodes_pruned;
 
   void GameLoop();
   Color Toggle(Color color);

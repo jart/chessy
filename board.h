@@ -4,16 +4,8 @@
 #ifndef CHESSY_BOARD_H_
 #define CHESSY_BOARD_H_
 
-#include <array>
-#include <vector>
-
 #include "chessy.h"
 #include "move.h"
-
-using std::array;
-using std::string;
-using std::vector;
-
 
 namespace chessy {
   enum BoardRepresentation {
