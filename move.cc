@@ -26,7 +26,7 @@ namespace chessy {
       return kRank * rank + file;  
     }
     Square Getx88(char f, char r) {
-      Offset file = f - 'a';
+      Offset file = tolower(f) - 'a';
       if (file < 0 || file >= kRow)
         return kInvalid;
 

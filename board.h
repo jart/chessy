@@ -70,6 +70,7 @@ namespace chessy {
     // Update and Undo mutate the board. They must be symmetric.
     void Update(const Move& move);
     void Undo(const Move& move);
+    void Reset();
 
     // Creates a move, qualified according to current board position
     Move ComposeMove(Square source, Square dest);
@@ -81,7 +82,7 @@ namespace chessy {
 
     // Evaluated from the point of view of current player color.
     int Score() const;
-    void Print(std::ostream& os) const;
+    void Print(std::ostream& os, bool redraw) const;
     string color_str() const;
 
     inline Color color() { return color_; }
@@ -95,6 +96,8 @@ namespace chessy {
     bool SquareAttacked(Square square, Color color) const;
     Square KingSquare(Color color) const;
 
+    // Whether |square| was involved in the previous move.
+    bool ActiveSquare(const Square square) const; 
     // bool InCheck();
 
    private:

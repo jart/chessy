@@ -16,10 +16,16 @@ using std::endl;
 namespace chessy {
 
   Board::Board() : board_(kInitialBoardPosition), color_(kWhite) {
+    Reset();
+  }
 
+  void Board::Reset() {
     // Sync the SquareTable and PieceTable according to BitBoards
+    board_ = kInitialBoardPosition;
+    color_ = kWhite;
     for (int square = 0; square < square::kTotal; ++square) {
       square_table_[square].index = square;
+      square_table_[square].empty = true;
       for (int piece = kPawn; piece < kPieceTypes; ++piece) {
         Piece sc_piece = static_cast<Piece>(piece);
         if (GetBitBoard(kWhite, sc_piece)[square]) {
@@ -350,6 +356,12 @@ namespace chessy {
     return square_table_[square::Index(square)].color;
   }
 
+  bool Board::ActiveSquare(const Square square) const {
+    if (last_move_ == kInvalidMove)
+      return false;
+    return square == last_move_.source ||
+           square == last_move_.dest;
+  }
 
   void Board::SetAttacked(Square square) {
     attacked_[square] = 1;
