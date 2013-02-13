@@ -16,9 +16,6 @@ board.o: board.cc board.h
 bot.o: bot.cc bot.h
 render.o: render.cc render.h
 
-%.o: %.cc
-	$(CXX) $(CXXFLAGS) -c -o $@ $<
-
 clean:
 	rm -f chessy *.o
 
