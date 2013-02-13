@@ -100,7 +100,7 @@ namespace dbg {
         "  |d|="    + i2s(bot::kMaxDepth) + 
         "  |M|="    + i2s(branches) +
         "  |eval|=" + i2s(board->Score()) + 
-        "\n\t" + term::kPink + "§");    // Begin progress bar
+        "\n\t" + term::kPink + u8"\u00A7");    // Begin progress bar
   }
 
 
@@ -123,7 +123,7 @@ namespace dbg {
     Step(2);
     if (g_dbg < 1)
       return;
-    render::ChessyMsg("»");  // Indicator
+    render::ChessyMsg(u8"\u00BB");  // Indicator
     fflush(stdout);
   }
 
@@ -136,10 +136,10 @@ namespace dbg {
                     static_cast<float>(g_branches_searched) * 100;
     string happy = score >= 0 ? 
         term::kGreen + "Q(^_^ Q)":
-        term::kRed   + "÷(-_- ÷)";
+        term::kRed   + u8"\u00F7(-_- \u00F7)";
 
     render::ChessyMsg(
-        "§ " + happy + term::kPink +
+        u8"\u00A7 " + happy + term::kPink +
         "\n\t\t total branches: " + i2s(g_branches_searched) +
         "\n\t\t total pruned:   " + i2s(g_branches_pruned) +
         "\n\t\t search savings: " + i2s(savings) + "%");

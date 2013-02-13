@@ -155,6 +155,8 @@ namespace chessy {
         case kKing:
           targets = KingTargets(square);
           break;
+        default:
+          assert(false);
       }
 
       for (Square dest : targets) {
