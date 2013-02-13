@@ -1,5 +1,3 @@
-all: chessy
-
 CXX=clang++
 STD=c++11
 CXXFLAGS=-std=$(STD) -g -O0 -Wall -Werror -DUNICODE
@@ -8,7 +6,7 @@ LDFLAGS=
 all: chessy
 
 chessy: chessy.o board.o move.o bot.o render.o
-	$(CXX) $(CXXFLAGS) chessy.o board.o move.o bot.o render.o -o chessy $(LDFLAGS)
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
 chessy.o: chessy.cc chessy.h
 move.o: move.cc move.h
