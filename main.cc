@@ -8,6 +8,7 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
+#include "board.h"
 #include "chessy.h"
 #include "term.h"
 

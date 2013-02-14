@@ -8,6 +8,7 @@
 
 #include <glog/logging.h>
 
+#include "binary.h"
 #include "chessy.h"
 #include "move.h"
 #include "render.h"
@@ -19,18 +20,18 @@ using std::endl;
 namespace chessy {
 
 const BoardPosition kInitialBoardPosition = {{
-  BitBoard("11111111") << kRow,        // White Pawn
-  BitBoard("01000010"),                // White Knight
-  BitBoard("00100100"),                // White Bishop
-  BitBoard("10000001"),                // White Rook
-  BitBoard("00001000"),                // White Queen
-  BitBoard("00010000"),                // White King
-  BitBoard("11111111") << (kRow * 6),  // Black Pawn
-  BitBoard("01000010") << (kRow * 7),  // Black Knight
-  BitBoard("00100100") << (kRow * 7),  // Black Bishop
-  BitBoard("10000001") << (kRow * 7),  // Black Rook
-  BitBoard("00001000") << (kRow * 7),  // Black Queen
-  BitBoard("00010000") << (kRow * 7),  // Black King
+  BitBoard(11111111_bin << kRow),        // White Pawn
+  BitBoard(01000010_bin),                // White Knight
+  BitBoard(00100100_bin),                // White Bishop
+  BitBoard(10000001_bin),                // White Rook
+  BitBoard(00001000_bin),                // White Queen
+  BitBoard(00010000_bin),                // White King
+  BitBoard(11111111_bin << (kRow * 6)),  // Black Pawn
+  BitBoard(01000010_bin << (kRow * 7)),  // Black Knight
+  BitBoard(00100100_bin << (kRow * 7)),  // Black Bishop
+  BitBoard(10000001_bin << (kRow * 7)),  // Black Rook
+  BitBoard(00001000_bin << (kRow * 7)),  // Black Queen
+  BitBoard(00010000_bin << (kRow * 7)),  // Black King
 }};
 
 Board::Board() : board_(kInitialBoardPosition), color_(kWhite) {
@@ -173,7 +174,6 @@ Moves Board::PossibleMoves() {
       default:
         CHECK(false) << state.piece;
     }
-
     for (Square dest : targets) {
       AddMove(&res, ComposeMove(square, dest));
     }
@@ -184,29 +184,14 @@ Moves Board::PossibleMoves() {
 
 MoveType Board::QualifyTarget(Square target) {
   if (!Valid(target))
-    return kInvalidMove;  // 0x88 off-the-board.
-
+    return kInvalidMove;
   int index = Index(target);
   const auto& state = square_table_[index];
-
   if (state.empty)
     return kRegular;
-
   if (state.color == color_)
     return kInvalidMove;
-
   return kAttack;
-  /*
-  // Cannot move onto a square occupied by self
-  if (Friends()[index])
-  return kInvalidMove;
-
-  // Moving onto square occupid by enemy is an attack
-  if (Enemies()[index])
-  return kAttack;
-  // Moving to an empty square is (usually) a regular move
-  return kRegular;
-  */
 }
 
 Move Board::ComposeMove(Square source, Square dest) {
@@ -306,20 +291,21 @@ Squares Board::KingTargets(Square source) {
   Squares res;
   for (const auto delta : delta::kOmnigonal) {
     Square target = source + delta;
-    if (kInvalidMove != QualifyTarget(target))
+    if (kInvalidMove != QualifyTarget(target)) {
       res.emplace_front(target);
+    }
   }
   return res;
 }
 
 void Board::SlidingTargets(Squares* res, Square source, Offset delta) {
   Square dest = source + delta;
-
   MoveType type = kRegular;
   while (kRegular == type) {
     type = QualifyTarget(dest);
-    if (kInvalidMove != type)
+    if (kInvalidMove != type) {
       res->emplace_front(dest);
+    }
     dest += delta;
   }
 }
@@ -354,7 +340,7 @@ BitBoard Board::Enemies() {
 
 BitBoard Board::PositionMask(Color color) const {
   BitBoard mask = kEmptyBoard;
-  for (int piece = 0 ; piece < kPieceTypes ; ++piece) {
+  for (int piece = 0; piece < kPieceTypes; ++piece) {
     mask |= GetBitBoard(color, static_cast<Piece>(piece));
   }
   return mask;

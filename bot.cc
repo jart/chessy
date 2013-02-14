@@ -28,11 +28,12 @@ int Think(Board* board) {
 // Maximizes the negation of the enemy player's positions.
 int NegaMax(Board* board, int depth, int alpha, int beta) {
   Moves moves = board->PossibleMoves();
-  TLOG << moves.size() << "-< ("
-       << ColorString(Toggle(board->color())) << " "
-       << board->last_move()
+  TLOG << moves.size()
+       << "-< (" << ColorString(Toggle(board->color()))
+       << " "    << board->last_move()
        << ") a[" << alpha
-       << "] b[" << beta << "] >- ";
+       << "] b[" << beta
+       << "] >- ";
   if (depth == 0 || moves.size() == 0) {
     int score = board->Score();
     TLOG << "h-val(" << board->color_str() << ")=" << score;

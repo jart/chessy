@@ -23,20 +23,6 @@ const Square kInvalidSquare = 0x80;  // Default "invalid" square.
 const Square kInvalidMask   = 0x88;
 const Offset kRow           = 8;
 
-// Conversions between Rank, File numbers, Indices, and 0x88.
-Offset Rank(Square square);
-Offset File(Square square);
-Square Getx88(Offset rank, Offset file);
-Square Getx88(char f, char r);
-Square Getx88(int index);
-int Index(Square square);
-
-bool Valid(Square square);
-
-std::string PrintSquare(const Square& square);
-
-std::ostream& operator<<(std::ostream& os, const Square& square);
-
 namespace delta {
 
 const Offset kU  = kRank;
@@ -69,6 +55,22 @@ const std::array<Offset, 8> kKnight = {{
 }};
 
 }  // namespace delta
+
+// Conversions between Rank, File numbers, Indices, and 0x88.
+Offset Rank(Square square);
+Offset File(Square square);
+Square Getx88(Offset rank, Offset file);
+Square Getx88(char f, char r);
+Square Getx88(int index);
+int Index(Square square);
+
+static inline bool Valid(Square square) {
+  return !(square & kInvalidMask);
+}
+
+std::string PrintSquare(const Square& square);
+
+std::ostream& operator<<(std::ostream& os, const Square& square);
 
 }  // namespace chessy
 

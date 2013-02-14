@@ -38,7 +38,7 @@ typedef std::forward_list<Square> Squares;
 
 // 64-bit existential piece-type representation.
 typedef std::bitset<64> BitBoard;
-typedef std::array<BitBoard, 2 * kPieceTypes> BoardPosition;
+typedef std::array<BitBoard, kColors * kPieceTypes> BoardPosition;
 typedef std::array<SquareState, 64> SquareTable;
 
 typedef std::array<Square, kMaxPieces> PieceTable;
@@ -51,12 +51,12 @@ static const std::array<Piece, kMaxPieces> kPieceTableIndex = {{
 
 // Units are in centi-pawns
 const std::array<int, kPieceTypes> kPieceValues = {{
-  100,    // Pawn
-  300,    // Knight
-  300,    // Bishop
-  500,    // Rook
-  900,    // Queen
-  6666,   // King
+  100,  // Pawn
+  300,  // Knight
+  300,  // Bishop
+  500,  // Rook
+  900,  // Queen
+  6666, // King
 }};
 
 const BitBoard kEmptyBoard = 0;

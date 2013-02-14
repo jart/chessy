@@ -9,10 +9,6 @@ using std::string;
 
 namespace chessy {
 
-bool Valid(Square square) {
-  return !(square & kInvalidMask);
-}
-
 Square Getx88(Offset rank, Offset file) {
   return kRank * rank + file;
 }
