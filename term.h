@@ -16,28 +16,28 @@ namespace term {
 std::string i2s(int x);
 std::string x2s(int x);
 
-// ANSI escape sequences for console drawing shenanigans
+// ANSI escape sequences for console drawing shenanigans.
 // 256 reference: http://www.pixelbeat.org/docs/terminal_colours/
-const std::string kX = "\x1b[";  // The beginning of an escape sequence.
+const std::string kX = "\x1b[";
 
-// --- Visibility ---
+// Visibility
 const std::string kHideCursor    = kX + "?25l";
 const std::string kShowCursor    = kX + "?25h";
 const std::string kSaveCursor    = kX + "s";
 const std::string kRestoreCursor = kX + "u";
 
 const std::string kClear      = kX + "2J" + kX + "H";  // Clear ALL
-const std::string kClearEnd   = kX + "0J";   // only from cursor to end
-const std::string kClearStart = kX + "1J";   // only from cursor to start
+const std::string kClearEnd   = kX + "0J";  // only from cursor to end
+const std::string kClearStart = kX + "1J";  // only from cursor to start
 
-// --- Position/Offsets ---
+// Position/Offsets
 const int kBoardStart  = 12;  // Rows from the top
 const int kBoardLeft   = 4;
-const int kBoardPad    = 2;   // For the Rank numbers
+const int kBoardPad    = 2;  // For the Rank numbers
 const int kBoardHeight = kRow * render::kSquareSize;
 const int kBottom_ = kBoardStart + kBoardHeight + 7;
 
-// Cursor jumping.
+// Cursor Jumping
 const std::string kBoardPosition  = kX + i2s(kBoardStart) + ";1H";
 const std::string kInputPosition  = kX + i2s(kBottom_) + ";8H";
 const std::string kStatusPosition = kX + i2s(kBottom_ - 2) + ";4H";
@@ -48,8 +48,8 @@ const std::string kDown = kX + "1B";
 const std::string kBack = kX + "1D";
 const std::string kBackSquare = kX + i2s(render::kSquareSize * 2) + "D";
 
-// --- Color ---
-const std::string kReset = kX + "0m";  // Reset in terms of color
+// Color
+const std::string kReset = kX + "0m";
 const std::string kBold = kX + "38;5;255;0;0m";
 const std::string kFG = kX + "38;5;";
 const std::string kBG = kX + "48;5;";
@@ -81,7 +81,7 @@ const std::string kBlueBg       = kBG + "61m";
 const std::string kDawnBg       = kBG + "59m";
 const std::string kDuskBg       = kBG + "60m";
 
-// --- Application ---
+// Application
 const std::string kWhitePiece = kPink;
 const std::string kWhiteSquare = kGrayBg;
 const std::string kWhiteSquareActive = kDawnBg;
