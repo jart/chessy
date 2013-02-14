@@ -4,10 +4,11 @@
 #include "board.h"
 
 #include <cstdlib>
-#include <cassert>
 #include <iostream>
 
-#include "constants.h"
+#include <glog/logging.h>
+
+#include "chessy.h"
 #include "move.h"
 #include "render.h"
 #include "square.h"
@@ -16,6 +17,21 @@ using std::cout;
 using std::endl;
 
 namespace chessy {
+
+const BoardPosition kInitialBoardPosition = {{
+  BitBoard("11111111") << kRow,        // White Pawn
+  BitBoard("01000010"),                // White Knight
+  BitBoard("00100100"),                // White Bishop
+  BitBoard("10000001"),                // White Rook
+  BitBoard("00001000"),                // White Queen
+  BitBoard("00010000"),                // White King
+  BitBoard("11111111") << (kRow * 6),  // Black Pawn
+  BitBoard("01000010") << (kRow * 7),  // Black Knight
+  BitBoard("00100100") << (kRow * 7),  // Black Bishop
+  BitBoard("10000001") << (kRow * 7),  // Black Rook
+  BitBoard("00001000") << (kRow * 7),  // Black Queen
+  BitBoard("00010000") << (kRow * 7),  // Black King
+}};
 
 Board::Board() : board_(kInitialBoardPosition), color_(kWhite) {
   Reset();
@@ -40,30 +56,28 @@ void Board::Reset() {
       }
     }
   }
-
   king_square_[kWhite] = 4;
   king_square_[kBlack] = 60;
 }
 
 void Board::Update(const Move& move) {
-  assert(kInvalidMove != move.type);
-  assert(kTentative != move.type);
+  CHECK(kInvalidMove != move.type);
+  CHECK(kTentative != move.type);
 
-  if (g_dbg > 3)
-    cout << "Board update: " << move << endl;
+  VLOG(3) << "Board update: " << move;
 
   // Null Moves are like "passing", which is invalid in real chess but can be
   // abused for our gametree.
   if (kNullMove == move.type) {
     color_ = Toggle(color_);
     friends_ ^= enemies_ ^= friends_ ^= enemies_;
-    attacked_ = kEmpty;
+    attacked_ = kEmptyBoard;
     return;
   }
 
   auto& source = square_table_[Index(move.source)];
   auto& dest = square_table_[Index(move.dest)];
-  assert(!source.empty);
+  CHECK(!source.empty);
 
   // Update king index
   // TODO: Implement PieceTable (which generalizes this) for faster lookups
@@ -79,9 +93,9 @@ void Board::Update(const Move& move) {
   color_ = Toggle(color_);
 
   // Flush memoized bit masks
-  friends_ = kEmpty;
-  enemies_ = kEmpty;
-  attacked_ = kEmpty;
+  friends_ = kEmptyBoard;
+  enemies_ = kEmptyBoard;
+  attacked_ = kEmptyBoard;
 
   // TODO: Transposition table which restores these masks
 
@@ -89,21 +103,20 @@ void Board::Update(const Move& move) {
 }
 
 void Board::Undo(const Move& move) {
-  //assert(last_move_ == move);
-  assert(move.type != kInvalidMove);
+  //CHECK(last_move_ == move);
+  CHECK(move.type != kInvalidMove);
   auto& source = square_table_[Index(move.source)];
   auto& dest = square_table_[Index(move.dest)];
 
-  if (g_dbg > 3)
-    cout << "Board undo: " << move << endl;
+  VLOG(3) << "Board undo: " << move;
 
   if (kNullMove == move.type) {
     color_ = Toggle(color_);
     friends_ ^= enemies_ ^= friends_ ^= enemies_;
-    attacked_ = kEmpty;
+    attacked_ = kEmptyBoard;
     return;
   }
-  assert(!dest.empty);
+  CHECK(!dest.empty);
 
   source.empty = false;
   source.piece = dest.piece;
@@ -125,9 +138,9 @@ void Board::Undo(const Move& move) {
   //}
 
   // Flush memoized bit masks
-  friends_ = kEmpty;
-  enemies_ = kEmpty;
-  attacked_ = kEmpty;
+  friends_ = kEmptyBoard;
+  enemies_ = kEmptyBoard;
+  attacked_ = kEmptyBoard;
   // TODO: Transposition table which restores these masks
 }
 
@@ -158,7 +171,7 @@ Moves Board::PossibleMoves() {
         targets = KingTargets(square);
         break;
       default:
-        assert(false);
+        CHECK(false) << state.piece;
     }
 
     for (Square dest : targets) {
@@ -328,19 +341,19 @@ int Board::Score() const {
 }
 
 BitBoard Board::Friends() {
-  if (kEmpty == friends_)
+  if (kEmptyBoard == friends_)
     friends_ = PositionMask(color_);
   return friends_;
 }
 
 BitBoard Board::Enemies() {
-  if (kEmpty == enemies_)
+  if (kEmptyBoard == enemies_)
     enemies_ = PositionMask(Toggle(color_));
   return enemies_;
 }
 
 BitBoard Board::PositionMask(Color color) const {
-  BitBoard mask = kEmpty;
+  BitBoard mask = kEmptyBoard;
   for (int piece = 0 ; piece < kPieceTypes ; ++piece) {
     mask |= GetBitBoard(color, static_cast<Piece>(piece));
   }
@@ -381,7 +394,7 @@ bool Board::SquareAttacked(Square square, Color color) const {
 
   /*
     const auto& state = board->square_table_[square];
-    if (kEmpty == attacked_) {
+    if (kEmptyBoard == attacked_) {
     return false;
     }
     attacked_
@@ -442,7 +455,7 @@ bool Checkmate(Board* board) {
     board->Update(move);
     board->Update(nm);
 
-    assert(color == board->color());
+    CHECK(color == board->color());
     res = InCheck(board, color);
 
     board->Undo(nm);

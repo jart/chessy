@@ -49,9 +49,19 @@ static const std::array<Piece, kMaxPieces> kPieceTableIndex = {{
   kQueen, kKing,
 }};
 
-// TODO: Make the above not suck
+// Units are in centi-pawns
+const std::array<int, kPieceTypes> kPieceValues = {{
+  100,    // Pawn
+  300,    // Knight
+  300,    // Bishop
+  500,    // Rook
+  900,    // Queen
+  6666,   // King
+}};
 
-const BitBoard kEmpty = 0;
+const BitBoard kEmptyBoard = 0;
+
+// TODO: Make the above not suck
 
 // Board is mutable. There is typically only one "real" board object
 // describing the current board state. However, there can be multiple
@@ -126,18 +136,18 @@ class Board {
 
   BoardPosition board_;
   // Existence maps of white and black.
-  BitBoard friends_ = kEmpty;  // Memoized masks
-  BitBoard enemies_ = kEmpty;
+  BitBoard friends_ = kEmptyBoard;  // Memoized masks
+  BitBoard enemies_ = kEmptyBoard;
 
   // BitBoards for existential/boolean checks.
-  BitBoard white_pieces = kEmpty;
-  BitBoard white_attack = kEmpty;
-  BitBoard black_pieces = kEmpty;
-  BitBoard black_attack = kEmpty;
+  BitBoard white_pieces = kEmptyBoard;
+  BitBoard white_attack = kEmptyBoard;
+  BitBoard black_pieces = kEmptyBoard;
+  BitBoard black_attack = kEmptyBoard;
 
   // Squares currently under attack by current player. Automatically filled
   // during calls to PossibleMoves(), to speed up certain checks.
-  BitBoard attacked_ = kEmpty;
+  BitBoard attacked_ = kEmptyBoard;
 
   PieceTable piece_table[2];
 

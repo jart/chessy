@@ -44,13 +44,13 @@ struct Move {
   int priority;  // Move ordering.
 };
 
-const Move kBadMove = Move();
+const Move kBadMove;
 
 // Use a priority queue for move ordering.
 // Comparison function required for *Move Ordering*.
 typedef std::priority_queue<Move> MoveHeap;
 typedef std::vector<Move> Moves;
-bool operator==(const Move &a, const Move &b);
+bool operator==(const Move& a, const Move& b);
 
 void AddMove(Moves* moves, const Move& move);
 Move GetMove(Moves* moves);

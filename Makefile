@@ -1,7 +1,7 @@
 CXX=clang++
 STD=c++11
 CXXFLAGS=-std=$(STD) -g -O0 -Wall -Werror -DUNICODE
-LDFLAGS=
+LDFLAGS=-lglog -lgflags
 
 all: chessy
 

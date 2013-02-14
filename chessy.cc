@@ -3,9 +3,12 @@
 
 #include "chessy.h"
 
-#include <cassert>
+#include <cstdio>
+#include <ctime>
 #include <iostream>
 #include <string>
+
+#include <glog/logging.h>
 
 #include "board.h"
 #include "bot.h"
@@ -18,69 +21,104 @@ using std::cout;
 using std::endl;
 using std::string;
 
-// TODO: Use gflags
-
 namespace chessy {
 
-GameMode g_mode = kMirror;
-GameState g_state = kNone;
+const string kChessyHappy = term::kGreen + "Q(^_^ Q)";
+const string kChessySad = term::kRed + u8"\u00F7(-_- \u00F7)";
 
-Move ChessyMove(Board* board) {
-  int score = bot::kMinScore;   // what a pessimist
+static GameMode g_mode = kMirror;
+static GameState g_state = kNone;
+
+static void Chillax(int ms) {
+  const struct timespec req = {
+    .tv_sec = ms / 1000,
+    .tv_nsec = (ms % 1000) * 1000000L,
+  };
+  fflush(stdout);  // Ensure renders up-to-date.
+  nanosleep(&req, NULL);
+}
+
+static void ChessyBeginsThinking(Board* board, int branches) {
+  // BLACK chessy msgs on top, WHITE chessy msgs on bottom.
+  if (kBlack == board->color()) {
+    render::ChessyNewMsg("BLACK THOUGHTS~");
+  } else {
+    render::ChessyNewMsgMirror("WHITE THOUGHTS~");
+  }
+  render::ChessyMsg(  // Basic metrics.
+      "  |d|="    + term::i2s(kMaxDepth) +
+      "  |M|="    + term::i2s(branches) +
+      "  |eval|=" + term::i2s(board->Score()) +
+      "\n\t" + term::kPink + u8"\u00A7");  // Begin progress bar.
+}
+
+static void NewBest(int score, const Move& move) {
+  string hval = (score >= 0 ?  // GREEN+ RED-
+                 term::kGreen + "+" :
+                 term::kRed) + term::i2s(score);
+  render::ChessyMsg("{" + hval + term::kPink + "}");
+  // Further |move| detail
+  render::ChessyMsg(
+      "Best move thus far: " + PrintMove(move) +
+      " (s-val=" + term::i2s(score) + ")\n\t");
+}
+
+static void ChessyProgress() {
+  if (kHuman == g_mode)  // Slow down for stupid humans.
+    Chillax(1);
+  render::ChessyMsg(u8"\u00BB");  // Indicator
+  fflush(stdout);
+}
+
+static void ChessyFinishesThinking(int score) {
+  // Chessy has happy metrics!
+  float savings = static_cast<float>(g_branches_pruned) /
+                  static_cast<float>(g_branches_searched) * 100;
+  const string& face = (score >= 0) ? kChessyHappy : kChessySad;
+  render::ChessyMsg(
+      u8"\u00A7 " + face + term::kPink +
+      "\n\t\t total branches: " + term::i2s(g_branches_searched) +
+      "\n\t\t total pruned:   " + term::i2s(g_branches_pruned) +
+      "\n\t\t search savings: " + term::i2s(savings) + "%");
+}
+
+static Move ChessyMove(Board* board) {
+  int score = kMinScore;  // What a pessimist!
   Move best = kBadMove;
-
   Moves moves = board->PossibleMoves();
-  dbg::ChessyBeginsThinking(board, moves.size());
-
+  ChessyBeginsThinking(board, moves.size());
   for (const auto& move : moves) {
-
     // Root-level move selection is AGNOSTIC to the internal algorithm.
     // Here we directly track the "best move", whereas the recursive internal
     // algorithm focuses on improving "scores" by neurotically branching and
     // verifying a-b windows as much as possible.
-
     board->Update(move);
-    int val = bot::Seed(board);   // TODO: parallelize the search
+    int val = Think(board);  // TODO: parallelize the search
     board->Undo(move);
-
     if (val > score) {
       score = val;
       best = move;
-      dbg::NewBest(score, move);
+      NewBest(score, move);
     }
-
-    dbg::ChessyProgress();    // (maybe) track root progress
+    ChessyProgress();  // (maybe) track root progress
     if (kPlaying != g_state)  // Breaking out early
       return best;
   }
-
-  dbg::ChessyFinishesThinking(score);
+  ChessyFinishesThinking(score);
   return best;
 }
 
-// Human Move Obtainium.
-
-Move ValidateNotation(const string& input) {
+static Move ValidateNotation(const string& input) {
   if (input.size() != 4)
     return kBadMove;
-
   Square source = Getx88(input[0], input[1]);
   Square dest = Getx88(input[2], input[3]);
-
   if (!(Valid(source) && Valid(dest)))
     return kBadMove;
-
   return Move(kTentative, source, dest);
 }
 
-bool operator==(const Move &a, const Move &b) {
-  return ((a.type == b.type) &&
-          (a.captured == b.captured) &&
-          (a.source == b.source) &&
-          (a.dest == b.dest));
-}
-
-Move HumanMove(Board* board) {
+static Move HumanMove(Board* board) {
   string input;
   const auto& possible = board->PossibleMoves();
   bool valid_move = false;
@@ -90,18 +128,15 @@ Move HumanMove(Board* board) {
       g_state = kNone;
       return kBadMove;
     }
-    // Rando
     if (tolower(input[0]) == 'r') {
       render::Status("You RANDOMLY moved:  ");
       return possible[std::rand() % possible.size()];
     }
-
     const auto& temp = ValidateNotation(input);
     if (kInvalidMove == temp.type) {
       render::Status("Smith notation please. (Example: a1b2)");
       continue;
     }
-
     const auto& move = board->ComposeMove(temp.source, temp.dest);
     for (const auto& pmove : possible) {
       if (move == pmove) {
@@ -118,7 +153,7 @@ Move HumanMove(Board* board) {
 }
 
 void EndGame() {
-  // Either stops a match in progress
+  // Either stops a match in progress.
   if (kPlaying == g_state) {
     //std::cin.putback('\n');
     //fflush(stdin);
@@ -126,26 +161,23 @@ void EndGame() {
     g_state = kNone;
     return;
   }
-
-  // Or the entire program
+  // Or the entire program.
   cout << term::kClear;
   render::ChessyNewMsg("Goodbye. <3\n");
   cout << term::kShowCursor << term::kReset;
   exit(0);
 }
 
-
-void DetermineGameType() {
+static void DetermineGameType() {
   static int games_started = 0;
   string prompt = "How about a nice game of chess?";
-  // or global thermonuclear war
-  if (games_started > 0)
+  // or global thermonuclear war...
+  if (games_started > 0) {
     prompt = "Shall we rematch?";
-
+  }
   if (render::YesNoPrompt(prompt)) {
     g_mode = kHuman;
     render::Status("You are WHITE and Chessy is BLACK.");
-
   } else {
     render::ChessyNewMsg("Alrighty. How about a lovely ");
     if (render::YesNoPrompt("2-chessy 1-board demonstration?")) {
@@ -177,7 +209,7 @@ void GameLoop() {
       render::ChessyNewMsg("Your move, dear ;)");
     } else {
       render::Status("Chessy will play Chessy! :D");
-      bot::Chillax(1500);
+      Chillax(1500);
     }
 
     while(kPlaying == g_state) {
@@ -188,9 +220,7 @@ void GameLoop() {
           render::Status("You forfeited.");
           break;
         }
-
-        assert(kInvalidMove != move.type);  // no cheating, dear
-
+        CHECK(kInvalidMove != move.type);  // No cheating, dear.
       } else {
         move = ChessyMove(&board);
         render::ChessyMsg("\n\n\t Result:  ");
@@ -222,14 +252,10 @@ void GameLoop() {
       }
 
       if (g_mode == kHuman)   // slow-down for the silly humans
-        bot::Chillax(500);
+        Chillax(500);
     }
     chessy_greeting = "That was fun! ";
   }
-}
-
-int PieceIndex(Color color, Piece piece) {
-  return piece + (color == kWhite? 0 : kPieceTypes);
 }
 
 }  // namespace chessy

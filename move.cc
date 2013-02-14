@@ -3,15 +3,13 @@
 
 #include "move.h"
 
-#include <algorithm>
+#include "board.h"
 
-#include "constants.h"
-
-using std::vector;
+using std::string;
 
 namespace chessy {
 
-const array<string, kMoveTypes> kMoves = {{
+const std::array<string, kMoveTypes> kMoves = {{
   "Invalid",
   "Regular",
   "Capture",
@@ -47,6 +45,13 @@ Move GetMove(Moves* moves) {
   Move move = moves->back();
   moves->pop_back();
   return move;
+}
+
+bool operator==(const Move& a, const Move& b) {
+  return ((a.type == b.type) &&
+          (a.captured == b.captured) &&
+          (a.source == b.source) &&
+          (a.dest == b.dest));
 }
 
 string PrintMove(const Move& move) {

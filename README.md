@@ -6,6 +6,6 @@
 
 ## Instructions
 
-You need a C++11 compiler and you run:
+You need a the latest clang C++11 compiler and you run:
 
     make run

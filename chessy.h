@@ -4,7 +4,6 @@
 #ifndef CHESSY_H_
 #define CHESSY_H_
 
-#include <cstdint>
 #include <string>
 
 namespace chessy {
@@ -25,7 +24,7 @@ enum Piece {
 };
 
 enum GameMode {
-  kMirror = 0,  // Bot plays its self
+  kMirror = 0,  // Bot plays itself.
   kHuman = 1,  // Bot plays YOU!
 };
 
@@ -39,25 +38,23 @@ const int kColors = 2;
 const int kPieceTypes = 6;
 const int kMaxPieces = 16;
 
-extern GameMode g_mode;
-extern GameState g_state;
-extern int g_dbg;  // Debug level from 0-2
-
-// Returns the color-modified Piece-type index.
-int PieceIndex(Color color, Piece piece);
-
 // Play the game.
 void GameLoop();
 
 // Stop the game loop (usually from a signal handler).
 void EndGame();
 
+// Returns the color-modified Piece-type index.
+inline int PieceIndex(Color color, Piece piece) {
+  return piece + (color == kWhite? 0 : kPieceTypes);
+}
+
 inline Color Toggle(Color color) {
   return (color == kWhite) ? kBlack : kWhite;
 }
 
 inline std::string ColorString(Color color) {
-  return (kWhite == color) ? "White" : "Black";
+  return (color == kWhite) ? "White" : "Black";
 }
 
 }  // namespace chessy

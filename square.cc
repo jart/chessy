@@ -2,9 +2,7 @@
 // 2013.02.08
 
 #include "square.h"
-
-#include <cassert>
-
+#include <glog/logging.h>
 #include "term.h"
 
 using std::string;
@@ -36,7 +34,7 @@ Square Getx88(int index) {
 }
 
 int Index(Square square) {
-  assert(Valid(square));
+  CHECK(Valid(square));
   return square % kRow + Rank(square) * kRow;
 }
 

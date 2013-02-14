@@ -5,6 +5,9 @@
 #include <signal.h>
 #include <iostream>
 
+#include <gflags/gflags.h>
+#include <glog/logging.h>
+
 #include "chessy.h"
 #include "term.h"
 
@@ -13,6 +16,11 @@ static void OnQuit(int sig) {
 }
 
 int main(int argc, char** argv) {
+  google::SetUsageMessage("chessy [FLAGS]");
+  google::SetVersionString("0.1");
+  google::ParseCommandLineFlags(&argc, &argv, true);
+  google::InitGoogleLogging(argv[0]);
+  google::InstallFailureSignalHandler();
   std::srand(static_cast<unsigned>(std::time(0)));
   signal(SIGINT, &OnQuit);
   signal(SIGABRT, &OnQuit);
