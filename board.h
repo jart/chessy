@@ -4,143 +4,158 @@
 #ifndef CHESSY_BOARD_H_
 #define CHESSY_BOARD_H_
 
+#include <array>
+#include <bitset>
+#include <forward_list>
+#include <string>
+
 #include "chessy.h"
 #include "move.h"
+#include "square.h"
 
 namespace chessy {
-  enum BoardRepresentation {
-    kBitBoards = 0,
-    k0x88 = 1
-  };
 
-  // Consolidated details for a single square
-  struct SquareState {
-    SquareState() : empty(true) {}
-    SquareState(Color color, Piece piece, int index)
-        : empty(false), color(color), piece(piece), index(index) {}
-    bool empty : 1;
-    Color color : 1;
-    Piece piece : 3;
-    int index;  // Invariant: Should always match SquareTable index.
-  };
+enum BoardRepresentation {
+  kBitBoards = 0,
+  k0x88 = 1
+};
 
+// Consolidated details for a single square.
+struct SquareState {
+  SquareState() : empty(true) {}
+  SquareState(Color color, Piece piece, int index)
+      : empty(false), color(color), piece(piece), index(index) {}
+  bool empty : 1;
+  Color color : 1;
+  Piece piece : 3;
+  int index;  // Invariant: Should always match SquareTable index.
+};
 
-  // 64-bit existential piece-type representation
-  typedef bitset<64> BitBoard;
-  typedef array<BitBoard, 2 * kPieceTypes> BoardPosition;
-  typedef array<SquareState, 64> SquareTable;
+// During moves generation, we sometimes generate lists of squares without
+// needing random lookup, but certainly requiring fast insertion and
+// unidirectional traversal and space efficiency.
+typedef std::forward_list<Square> Squares;
 
-  typedef array<Square, kMaxPieces> PieceTable;
-  static const array<Piece, kMaxPieces> kPieceTableIndex = {{
-    kPawn, kPawn, kPawn, kPawn, kPawn, kPawn, kPawn, kPawn,
-    kKnight, kKnight, kBishop, kBishop, kRook, kRook,
-    kQueen, kKing,
-  }};
-  // TODO: Make the above not suck
+// 64-bit existential piece-type representation.
+typedef std::bitset<64> BitBoard;
+typedef std::array<BitBoard, 2 * kPieceTypes> BoardPosition;
+typedef std::array<SquareState, 64> SquareTable;
 
-  const BitBoard kEmpty = 0;
+typedef std::array<Square, kMaxPieces> PieceTable;
 
-  // Board is mutable. There is typically only one "real" board object 
-  // describing the current board state. However, there can be multiple 
-  // think-space boards, each being branched upon.
-  class Board {
-   public:
-    Board();
-    Board(const Board&) = delete;
-    void operator=(const Board&) = delete;
+static const std::array<Piece, kMaxPieces> kPieceTableIndex = {{
+  kPawn, kPawn, kPawn, kPawn, kPawn, kPawn, kPawn, kPawn,
+  kKnight, kKnight, kBishop, kBishop, kRook, kRook,
+  kQueen, kKing,
+}};
 
-    // Returns all possible moves for the current |color_| player.
-    // The Moves contained in the vector are guaranteed to be valid, which means 
-    // each returned |Move| satisfies the following conditions:
-    //
-    // - Source square is occupied by one of the current player's pieces.
-    // - Destination square is empty OR strictly occupied by an enemy piece
-    // - The move does not put current player in check.
-    //
-    Moves PossibleMoves();
+// TODO: Make the above not suck
 
-    // Update and Undo mutate the board. They must be symmetric.
-    void Update(const Move& move);
-    void Undo(const Move& move);
-    void Reset();
+const BitBoard kEmpty = 0;
 
-    // Creates a move, qualified according to current board position
-    Move ComposeMove(Square source, Square dest);
+// Board is mutable. There is typically only one "real" board object
+// describing the current board state. However, there can be multiple
+// think-space boards, each being branched upon.
+class Board {
+ public:
+  Board();
+  Board(const Board&) = delete;
+  void operator=(const Board&) = delete;
 
-    // Getters
-    Piece PieceAt(Square square) const;
-    Color ColorAt(Square square) const;
-    string StringAt(Square square) const;
+  // Returns all possible moves for the current |color_| player.
+  // The Moves contained in the vector are guaranteed to be valid, which means
+  // each returned |Move| satisfies the following conditions:
+  //
+  // - Source square is occupied by one of the current player's pieces.
+  // - Destination square is empty OR strictly occupied by an enemy piece
+  // - The move does not put current player in check.
+  //
+  Moves PossibleMoves();
 
-    // Evaluated from the point of view of current player color.
-    int Score() const;
-    void Print(std::ostream& os, bool redraw) const;
-    string color_str() const;
+  // Update and Undo mutate the board. They must be symmetric.
+  void Update(const Move& move);
+  void Undo(const Move& move);
+  void Reset();
 
-    inline Color color() { return color_; }
-    inline void set_color(Color color) { color_ = color; }
-    inline Move last_move() const { return last_move_; }
+  // Creates a move, qualified according to current board position.
+  Move ComposeMove(Square source, Square dest);
 
-    BitBoard Friends();
-    BitBoard Enemies();
-    BitBoard GetBitBoard(Color color, Piece piece) const;
+  // Getters.
+  Piece PieceAt(Square square) const;
+  Color ColorAt(Square square) const;
+  std::string StringAt(Square square) const;
 
-    bool SquareAttacked(Square square, Color color) const;
-    Square KingSquare(Color color) const;
+  // Evaluated from the point of view of current player color.
+  int Score() const;
+  void Print(std::ostream& os, bool redraw) const;
+  std::string color_str() const;
 
-    // Whether |square| was involved in the previous move.
-    bool ActiveSquare(const Square square) const; 
-    // bool InCheck();
+  inline Color color() { return color_; }
+  inline void set_color(Color color) { color_ = color; }
+  inline Move last_move() const { return last_move_; }
 
-   private:
-    // If we move a piece to |square|, what type of move will it be?
-    // Does not take into consideration en-passant nor castling nor queening.
-    // Requires that square is at least on the board.
-    MoveType QualifyTarget(Square target);
+  BitBoard Friends();
+  BitBoard Enemies();
+  BitBoard GetBitBoard(Color color, Piece piece) const;
 
-    // Given a source square, return a set of Squares that some particular 
-    // piece-type could move to. 
-    Squares PawnTargets(Square square);
-    Squares KnightTargets(Square square);
-    Squares BishopTargets(Square square);
-    Squares RookTargets(Square square);
-    Squares QueenTargets(Square square);
-    Squares KingTargets(Square square);
+  bool SquareAttacked(Square square, Color color) const;
+  Square KingSquare(Color color) const;
 
-    void SlidingTargets(Squares* res, Square source, Offset delta);
-    void SetAttacked(Square square);
-    BitBoard PositionMask(Color color) const;
+  // Whether |square| was involved in the previous move.
+  bool ActiveSquare(const Square square) const;
+  // bool InCheck();
 
-    BoardPosition board_;
-    // Existence maps of white and black.
-    BitBoard friends_ = kEmpty;  // Memoized masks
-    BitBoard enemies_ = kEmpty;
+ private:
+  // If we move a piece to |square|, what type of move will it be?  Does not
+  // take into consideration en-passant nor castling nor queening.  Requires
+  // that square is at least on the board.
+  MoveType QualifyTarget(Square target);
 
-    // BitBoards for existential/boolean checks
-    BitBoard white_pieces = kEmpty;  
-    BitBoard white_attack = kEmpty;  
-    BitBoard black_pieces = kEmpty; 
-    BitBoard black_attack = kEmpty; 
+  // Given a source square, return a set of Squares that some particular
+  // piece-type could move to.
+  Squares PawnTargets(Square square);
+  Squares KnightTargets(Square square);
+  Squares BishopTargets(Square square);
+  Squares RookTargets(Square square);
+  Squares QueenTargets(Square square);
+  Squares KingTargets(Square square);
 
-    // Squares currently under attack by current player. Automatically filled 
-    // during calls to PossibleMoves(), to speed up certain checks.
-    BitBoard attacked_ = kEmpty;  
+  void SlidingTargets(Squares* res, Square source, Offset delta);
+  void SetAttacked(Square square);
+  BitBoard PositionMask(Color color) const;
 
-    PieceTable piece_table[2];
+  BoardPosition board_;
+  // Existence maps of white and black.
+  BitBoard friends_ = kEmpty;  // Memoized masks
+  BitBoard enemies_ = kEmpty;
 
-    SquareTable square_table_;  // Indexed by Square
-    Color color_;
+  // BitBoards for existential/boolean checks.
+  BitBoard white_pieces = kEmpty;
+  BitBoard white_attack = kEmpty;
+  BitBoard black_pieces = kEmpty;
+  BitBoard black_attack = kEmpty;
 
-    Square king_square_[kColors];
+  // Squares currently under attack by current player. Automatically filled
+  // during calls to PossibleMoves(), to speed up certain checks.
+  BitBoard attacked_ = kEmpty;
 
-    Move last_move_ = kInvalidMove;
-  };
+  PieceTable piece_table[2];
 
-  bool ValidMove(Board* board, const Move move);
-  bool InCheck(Board* board, Color color);
-  bool Checkmate(Board* board);
-  bool Stalemate(Board* board);
+  SquareTable square_table_;  // Indexed by Square
+  Color color_;
 
-}  // chessy
+  Square king_square_[kColors];
+
+  Move last_move_ = kBadMove;
+};
+
+bool ValidMove(Board* board, const Move move);
+bool InCheck(Board* board, Color color);
+bool Checkmate(Board* board);
+bool Stalemate(Board* board);
+
+std::ostream& operator<<(std::ostream& os, const Board& board);
+
+}  // namespace chessy
 
 #endif  // CHESSY_BOARD_H_

@@ -4,63 +4,62 @@
 #ifndef CHESSY_H_
 #define CHESSY_H_
 
-#include <array>
-#include <bitset>
-#include <cassert>
 #include <cstdint>
 #include <string>
 
-using std::array;
-using std::string;
-using std::bitset;
-
-
 namespace chessy {
 
-  enum Color {
-    kWhite = 0,
-    kBlack = 1,
-  };
-  enum Piece {
-    kPawn    = 0,
-    kKnight  = 1,
-    kBishop  = 2,
-    kRook    = 3,
-    kQueen   =  4,
-    kKing    = 5,
-    kNoPiece = 6,
-  };
+enum Color {
+  kWhite = 0,
+  kBlack = 1,
+};
 
-  const int kColors = 2;
-  const int kPieceTypes = 6;
-  const int kMaxPieces = 16;
+enum Piece {
+  kPawn    = 0,
+  kKnight  = 1,
+  kBishop  = 2,
+  kRook    = 3,
+  kQueen   = 4,
+  kKing    = 5,
+  kNoPiece = 6,
+};
 
-  typedef int8_t Bitx88;  // 0x88 bit masks
-  typedef Bitx88 Square;  // Singular square (Assumes 0x88 representation)
-  typedef int8_t Offset;  // Regular signed integer offsets
+enum GameMode {
+  kMirror = 0,  // Bot plays its self
+  kHuman = 1,  // Bot plays YOU!
+};
 
-  // Returns the color-modified Piece-type index
-  int PieceIndex(Color color, Piece piece);
+enum GameState {
+  kNone = 0,
+  kPlaying = 1,
+  kPaused = 2,
+};
 
-  enum GameMode {
-    kMirror = 0,  // Bot plays its self
-    kHuman = 1,  // Bot plays YOU!
-  };
+const int kColors = 2;
+const int kPieceTypes = 6;
+const int kMaxPieces = 16;
 
-  enum GameState {
-    kNone = 0,
-    kPlaying = 1,
-    kPaused = 2,
-  };
+extern GameMode g_mode;
+extern GameState g_state;
+extern int g_dbg;  // Debug level from 0-2
 
-  extern GameMode g_mode;
-  extern GameState g_state;
+// Returns the color-modified Piece-type index.
+int PieceIndex(Color color, Piece piece);
 
-  extern int g_dbg;  // Debug level from 0-2
+// Play the game.
+void GameLoop();
 
-  void GameLoop();
-  Color Toggle(Color color);
+// Stop the game loop (usually from a signal handler).
+void EndGame();
 
-}  // chessy
+inline Color Toggle(Color color) {
+  return (color == kWhite) ? kBlack : kWhite;
+}
+
+inline std::string ColorString(Color color) {
+  return (kWhite == color) ? "White" : "Black";
+}
+
+}  // namespace chessy
 
 #endif  // CHESSY_H_
