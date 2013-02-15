@@ -1,4 +1,4 @@
-// board.c - board implementations
+// board.cc - board implementations
 // 2013.02.08
 
 #include "board.h"
@@ -17,6 +17,43 @@ using std::cout;
 using std::endl;
 
 namespace chessy {
+
+const std::array<Square, 4> kOrthogonal = {{
+  Square::kUp,
+  Square::kDown,
+  Square::kRight,
+  Square::kLeft,
+}};
+
+const std::array<Square, 4> kDiagonal = {{
+  Square::kUp + Square::kLeft,
+  Square::kUp + Square::kRight,
+  Square::kDown + Square::kLeft,
+  Square::kDown + Square::kRight,
+}};
+
+const std::array<Square, 8> kOmnigonal = {{
+  Square::kUp,
+  Square::kDown,
+  Square::kRight,
+  Square::kLeft,
+  Square::kUp + Square::kLeft,
+  Square::kUp + Square::kRight,
+  Square::kDown + Square::kLeft,
+  Square::kDown + Square::kRight,
+}};
+
+// The 8 'L' shapes.
+const std::array<Square, 8> kKnightMoves = {{
+  Square::kUp + Square::kUp + Square::kLeft,
+  Square::kUp + Square::kUp + Square::kRight,
+  Square::kDown + Square::kDown + Square::kLeft,
+  Square::kDown + Square::kDown + Square::kRight,
+  Square::kLeft + Square::kLeft + Square::kUp,
+  Square::kLeft + Square::kLeft + Square::kDown,
+  Square::kRight + Square::kRight + Square::kUp,
+  Square::kRight + Square::kRight + Square::kDown,
+}};
 
 const BoardPosition kInitialBoardPosition = {{
   BitBoard("11111111") << kRow,        // White Pawn
@@ -41,7 +78,7 @@ void Board::Reset() {
   // Sync the SquareTable and PieceTable according to BitBoards.
   board_ = kInitialBoardPosition;
   color_ = kWhite;
-  for (int square = 0; square < kTotal; ++square) {
+  for (int square = 0; square < kRow * kRow; ++square) {
     square_table_[square].index = square;
     square_table_[square].empty = true;
     for (int piece = kPawn; piece < kPieceTypes; ++piece) {
@@ -56,8 +93,8 @@ void Board::Reset() {
       }
     }
   }
-  king_square_[kWhite] = 4;
-  king_square_[kBlack] = 60;
+  // king_square_[kWhite] = 4;
+  // king_square_[kBlack] = 60;
 }
 
 void Board::Update(const Move& move) {
@@ -75,8 +112,8 @@ void Board::Update(const Move& move) {
     return;
   }
 
-  auto& source = square_table_[Index(move.source)];
-  auto& dest = square_table_[Index(move.dest)];
+  auto& source = square_table_[move.source.Index()];
+  auto& dest = square_table_[move.dest.Index()];
   CHECK(!source.empty);
 
   // Update king index
@@ -105,8 +142,8 @@ void Board::Update(const Move& move) {
 void Board::Undo(const Move& move) {
   //CHECK(last_move_ == move);
   CHECK(move.type != kInvalidMove);
-  auto& source = square_table_[Index(move.source)];
-  auto& dest = square_table_[Index(move.dest)];
+  auto& source = square_table_[move.source.Index()];
+  auto& dest = square_table_[move.dest.Index()];
 
   VLOG(3) << "Board undo: " << move;
 
@@ -150,7 +187,7 @@ Moves Board::PossibleMoves() {
     if (state.empty || state.color != color_)
       continue;
     Squares targets = Squares();
-    Square square = Getx88(state.index);
+    Square square = Square::FromIndex(state.index);
     switch (state.piece) {
       case kPawn:
         targets = PawnTargets(square);
@@ -182,10 +219,9 @@ Moves Board::PossibleMoves() {
 }
 
 MoveType Board::QualifyTarget(Square target) {
-  if (!Valid(target))
+  if (!target.Valid())
     return kInvalidMove;
-  int index = Index(target);
-  const auto& state = square_table_[index];
+  const auto& state = square_table_[target.Index()];
   if (state.empty)
     return kRegular;
   if (state.color == color_)
@@ -194,12 +230,12 @@ MoveType Board::QualifyTarget(Square target) {
 }
 
 Move Board::ComposeMove(Square source, Square dest) {
-  const auto& state = square_table_[Index(dest)];
+  const auto& state = square_table_[dest.Index()];
   MoveType type = QualifyTarget(dest);
   if (kInvalidMove == type ||
       (kPawn == PieceAt(source) &&
        kAttack == type &&
-       File(source) == File(dest))) {
+       source.File() == dest.File())) {
     return Move(kInvalidMove, source, dest);
   }
   if (kAttack == type) {
@@ -213,10 +249,10 @@ Squares Board::PawnTargets(const Square source) {
   Squares res;
 
   // Pawns are the only piece with directional limitation.
-  Offset forward = (color_ == kWhite ? delta::kU : delta::kD);
+  Square forward = (color_ == kWhite ? Square::kUp : Square::kDown);
   Square front = source + forward;
-  Square diagR = front + delta::kR;
-  Square diagL = front + delta::kL;
+  Square diagR = front + Square::kRight;
+  Square diagL = front + Square::kLeft;
 
   // Check diagonal attacks
   if (kAttack == QualifyTarget(diagR))
@@ -230,8 +266,8 @@ Squares Board::PawnTargets(const Square source) {
     res.emplace_front(front);
 
     // If it's the pawn's first move, check for an advance
-    if ((color_ == kWhite && Rank(source) == 1) ||
-        (color_ == kBlack && Rank(source) == 6)) {
+    if ((color_ == kWhite && source.Rank() == 1) ||
+        (color_ == kBlack && source.Rank() == 6)) {
 
       Square advance = front + forward;
       if (kRegular == QualifyTarget(advance)) {
@@ -250,7 +286,7 @@ Squares Board::PawnTargets(const Square source) {
 
 Squares Board::KnightTargets(Square source) {
   Squares res;
-  for (const auto delta : delta::kKnight) {
+  for (const auto delta : kKnightMoves) {
     Square target = source + delta;
     if (kInvalidMove != QualifyTarget(target)) {
       res.emplace_front(target);
@@ -261,7 +297,7 @@ Squares Board::KnightTargets(Square source) {
 
 Squares Board::BishopTargets(Square source) {
   Squares res;
-  for (const auto delta : delta::kDiagonal) {
+  for (const auto delta : kDiagonal) {
     SlidingTargets(&res, source,  delta);
   }
   return res;
@@ -269,7 +305,7 @@ Squares Board::BishopTargets(Square source) {
 
 Squares Board::RookTargets(Square source) {
   Squares res;
-  for (const auto delta : delta::kOrthogonal) {
+  for (const auto delta : kOrthogonal) {
     SlidingTargets(&res, source, delta);
   }
   return res;
@@ -277,7 +313,7 @@ Squares Board::RookTargets(Square source) {
 
 Squares Board::QueenTargets(Square source) {
   Squares res;
-  for (const auto delta : delta::kOmnigonal) {
+  for (const auto delta : kOmnigonal) {
     SlidingTargets(&res, source, delta);
   }
   return res;
@@ -291,7 +327,7 @@ Squares Board::QueenTargets(Square source) {
 
 Squares Board::KingTargets(Square source) {
   Squares res;
-  for (const auto delta : delta::kOmnigonal) {
+  for (const auto delta : kOmnigonal) {
     Square target = source + delta;
     if (kInvalidMove != QualifyTarget(target)) {
       res.emplace_front(target);
@@ -300,7 +336,7 @@ Squares Board::KingTargets(Square source) {
   return res;
 }
 
-void Board::SlidingTargets(Squares* res, Square source, Offset delta) {
+void Board::SlidingTargets(Squares* res, Square source, Square delta) {
   Square dest = source + delta;
   MoveType type = kRegular;
   while (kRegular == type) {
@@ -355,7 +391,7 @@ BitBoard Board::GetBitBoard(Color color, Piece piece) const {
 }
 
 Piece Board::PieceAt(Square square) const {
-  const auto& state = square_table_[Index(square)];
+  const auto& state = square_table_[square.Index()];
   if (state.empty) {
     return kNoPiece;
   }
@@ -363,7 +399,7 @@ Piece Board::PieceAt(Square square) const {
 }
 
 Color Board::ColorAt(Square square) const {
-  return square_table_[Index(square)].color;
+  return square_table_[square.Index()].color;
 }
 
 bool Board::ActiveSquare(const Square square) const {
@@ -374,12 +410,12 @@ bool Board::ActiveSquare(const Square square) const {
 }
 
 void Board::SetAttacked(Square square) {
-  attacked_[square] = 1;
+  attacked_[square.Index()] = 1;
 }
 
 bool Board::SquareAttacked(Square square, Color color) const {
   if (color == color_) {
-    return attacked_[square] == 1;
+    return attacked_[square.Index()] == 1;
   }
 
   /*
@@ -403,9 +439,9 @@ bool ValidMove(Board* board, const Move move) {
   return res;
 }
 
-Square Board::KingSquare(Color color) const {
-  return king_square_[color];
-}
+// Square Board::KingSquare(Color color) const {
+//   return king_square_[color];
+// }
 
 //bool Board::InCheck() {
 //  return InCheck(this, color_);
@@ -413,49 +449,49 @@ Square Board::KingSquare(Color color) const {
 
 bool InCheck(Board* board, Color color) {
   return false;
-  // Is |color| king under attack?
-  Square king = board->KingSquare(color);
+  // // Is |color| king under attack?
+  // Square king = board->KingSquare(color);
 
-  // Checking if enemy is in check
-  if (color != board->color()) {
-    return board->SquareAttacked(king, color);
-  }
+  // // Checking if enemy is in check
+  // if (color != board->color()) {
+  //   return board->SquareAttacked(king, color);
+  // }
 
-  // Checking if current player is in check (more expensive for now)
-  bool res = false;
-  Move nm(kNullMove);
-  board->Update(nm);
-  board->PossibleMoves();
-  res = board->SquareAttacked(king, board->color());
-  board->Undo(nm);
-  return res;
+  // // Checking if current player is in check (more expensive for now)
+  // bool res = false;
+  // Move nm(kNullMove);
+  // board->Update(nm);
+  // board->PossibleMoves();
+  // res = board->SquareAttacked(king, board->color());
+  // board->Undo(nm);
+  // return res;
 }
 
 bool Checkmate(Board* board) {
   return false;
-  Color color = board->color();
-  if (!InCheck(board, color)) {
-    return false;
-  }
+  // Color color = board->color();
+  // if (!InCheck(board, color)) {
+  //   return false;
+  // }
 
-  // Assume checkmate until proven innocent.
-  bool res = true;
-  Move nm(kNullMove);
-  for (const auto& move : board->PossibleMoves()) {
-    board->Update(move);
-    board->Update(nm);
+  // // Assume checkmate until proven innocent.
+  // bool res = true;
+  // Move nm(kNullMove);
+  // for (const auto& move : board->PossibleMoves()) {
+  //   board->Update(move);
+  //   board->Update(nm);
 
-    CHECK(color == board->color());
-    res = InCheck(board, color);
+  //   CHECK(color == board->color());
+  //   res = InCheck(board, color);
 
-    board->Undo(nm);
-    board->Undo(move);
-    if (!res)
-      return false;
-  }
+  //   board->Undo(nm);
+  //   board->Undo(move);
+  //   if (!res)
+  //     return false;
+  // }
 
-  // No available move gets out of Check.
-  return true;
+  // // No available move gets out of Check.
+  // return true;
 }
 
 bool Stalemate(Board* board) {

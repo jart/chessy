@@ -111,9 +111,9 @@ static Move ChessyMove(Board* board) {
 static Move ValidateNotation(const string& input) {
   if (input.size() != 4)
     return kBadMove;
-  Square source = Getx88(input[0], input[1]);
-  Square dest = Getx88(input[2], input[3]);
-  if (!(Valid(source) && Valid(dest)))
+  Square source = Square::Parse(input.substr(0, 2));
+  Square dest = Square::Parse(input.substr(2, 2));
+  if (!(source.Valid() && dest.Valid()))
     return kBadMove;
   return Move(kTentative, source, dest);
 }

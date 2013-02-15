@@ -9,9 +9,10 @@ all: chessy
 chessy: main.o $(OBJS)
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
-experimental: experimental.o $(OBJS)
+experimental: experimental.o square.o term.o
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
+bitboard.o: bitboard.cc bitboard.h
 board.o: board.cc board.h
 bot.o: bot.cc bot.h
 chessy.o: chessy.cc chessy.h

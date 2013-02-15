@@ -56,9 +56,9 @@ bool operator==(const Move& a, const Move& b) {
 
 string PrintMove(const Move& move) {
   string res = "";
-  res += PrintSquare(move.source);
+  res += move.source.ToString();
   res += "->";
-  res += PrintSquare(move.dest);
+  res += move.dest.ToString();
   res += " [" + kMoves[move.type] + "]";
   return res;
 }

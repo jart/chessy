@@ -34,7 +34,7 @@ const std::string kClearStart = kX + "1J";  // only from cursor to start
 const int kBoardStart  = 12;  // Rows from the top
 const int kBoardLeft   = 4;
 const int kBoardPad    = 2;  // For the Rank numbers
-const int kBoardHeight = kRow * render::kSquareSize;
+const int kBoardHeight = 8 * render::kSquareSize;
 const int kBottom_ = kBoardStart + kBoardHeight + 7;
 
 // Cursor Jumping

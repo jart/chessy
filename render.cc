@@ -41,8 +41,8 @@ const int kMid = render::kSquareCenter;
 const int kSpan = render::kSquareSize;
 
 void CursorToSquare(Square square) {
-  Offset rank = Rank(square);
-  Offset file = File(square);
+  int rank = square.Rank();
+  int file = square.File();
   int x = term::kBoardLeft + term::kBoardPad +
           (file * kSpan * 2);
   int y = term::kBoardPad + term::kBoardStart +
@@ -53,7 +53,7 @@ void CursorToSquare(Square square) {
 
 string CheckerColor(Square square, bool highlight) {
   string res = "";
-  bool white = (Rank(square) + File(square)) % 2;
+  bool white = (square.Rank() + square.File()) % 2;
   if (highlight) {
     res = white ? term::kWhiteSquareActive : term::kBlackSquareActive;
   } else {
@@ -75,7 +75,7 @@ void DrawSquare(string item) {
 namespace render {
 
 // Highlighting squares so it's easier to see what just happened.
-Square last_square_ = kInvalidSquare;
+Square last_square_ = Square::kInvalid;
 string last_piece_ = " ";
 
 void Status(string msg) {
@@ -168,8 +168,8 @@ void Everything(Board* board) {
 inline void RenderFileRow(std::ostream& os) {
   os << term::kGray;
   os << term::kBoardMargin << "  ";
-  for (int file = 0 ; file < kRow ; ++file) {
-    for (int x = 0 ; x < kSpan ; ++x) {
+  for (int file = 0; file < kRow; ++file) {
+    for (int x = 0; x < kSpan; ++x) {
       if (x == kMid)
         os << static_cast<char>('A' + file) << " ";
       else
@@ -180,7 +180,7 @@ inline void RenderFileRow(std::ostream& os) {
 }
 
 void Board::Print(std::ostream& os, bool redraw) const {
-  array<string, kTotal> sboard;
+  array<string, kRow * kRow> sboard;
 
   // Fill piece data
   sboard.fill(" ");
@@ -202,7 +202,7 @@ void Board::Print(std::ostream& os, bool redraw) const {
   cout << endl;
 
   // Print in reverse - rank 8 is top, 1 is bottom
-  for (Offset rank = kRow - 1; rank >= 0; --rank) {
+  for (int rank = kRow - 1; rank >= 0; --rank) {
     // Rows within rows, (for enlarged squares)
     for (int i = 0 ; i < kSpan ; ++i) {
 
@@ -214,8 +214,8 @@ void Board::Print(std::ostream& os, bool redraw) const {
       else
         os << "  ";
 
-      for (Offset file = 0; file < kRow; ++file) {
-        Square square = Getx88(rank, file);
+      for (int file = 0; file < kRow; ++file) {
+        Square square(rank, file);
         os << CheckerColor(square, false);
 
         // Columns within columns

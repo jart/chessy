@@ -1,59 +1,41 @@
-// square.h
-// 2013.02.08
+// square.cc - 0x88 board indexing.
 
 #include "square.h"
-#include <glog/logging.h>
+#include <cctype>
 #include "term.h"
-
-using std::string;
 
 namespace chessy {
 
-Square Getx88(Offset rank, Offset file) {
-  return kRank * rank + file;
-}
+const Square Square::kUp      = Square( 1,  0);
+const Square Square::kDown    = Square(-1,  0);
+const Square Square::kLeft    = Square( 0, -1);
+const Square Square::kRight   = Square( 0,  1);
+const Square Square::kInvalid = Square(0x88);
 
-Square Getx88(char f, char r) {
-  Offset file = tolower(f) - 'a';
+Square Square::Parse(std::string str) {
+  if (str.size() != 2)
+    return kInvalid;
+  int file = std::tolower(str[0]) - 'a';
   if (file < 0 || file >= kRow)
-    return kInvalidSquare;
-  Offset rank = r - '1';
+    return kInvalid;
+  int rank = str[1] - '1';
   if (rank < 0 || rank >= kRow)
-    return kInvalidSquare;
-  return Getx88(rank, file);
+    return kInvalid;
+  return Square(rank, file);
 }
 
-Square Getx88(int index) {
-  if (index < 0 || index >= kTotal)
-    return kInvalidSquare;
-  return kRank * (index >> 3) + index % kRow;
-}
-
-int Index(Square square) {
-  CHECK(Valid(square));
-  return square % kRow + Rank(square) * kRow;
-}
-
-Offset Rank(Square square) {
-  return square >> kRankShift;  // 4th through 7th bit.
-}
-
-Offset File(Square square) {
-  return square & kFileMask;  // First 3 bits.
-}
-
-string PrintSquare(const Square& square) {
-  if (!Valid(square)) {
-    return "NA(" + term::x2s(square) + ")";
+std::string Square::ToString() const {
+  if (!Valid()) {
+    return "NA(" + term::x2s(x88_) + ")";
   }
-  string res;
-  res += 'a' + static_cast<int>(File(square));
-  res += '1' + static_cast<int>(Rank(square));
+  std::string res;
+  res += 'a' + File();
+  res += '1' + Rank();
   return res;
 }
 
-std::ostream& operator<<(std::ostream& os, const Square& square) {
-  os << PrintSquare(square);
+std::ostream& operator<<(std::ostream& os, Square square) {
+  os << square.ToString();
   return os;
 }
 

@@ -4,7 +4,6 @@
 #ifndef CHESSY_MOVE_H_
 #define CHESSY_MOVE_H_
 
-#include <array>
 #include <queue>
 #include <vector>
 

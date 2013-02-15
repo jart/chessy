@@ -1,76 +1,69 @@
-// square.h
-// 2013.02.08
+// square.h - 0x88 board indexing.
 
 #ifndef CHESSY_SQUARE_H_
 #define CHESSY_SQUARE_H_
 
-#include <cstdint>
-#include <array>
 #include <ostream>
 #include <string>
 
 namespace chessy {
 
-typedef int8_t Offset;  // Regular signed integer offsets.
-typedef int8_t Square;  // Singular square (Assumes 0x88 representation)
+static const int kRow = 8;
 
-const int kTotal            = 0x40;  // 64
-const Offset kRank          = 0x10;  // 16
-const Offset kFile          = 0x01;
-const Offset kRankShift     = 4;
-const Square kFileMask      = 0x07;
-const Square kInvalidSquare = 0x80;  // Default "invalid" square.
-const Square kInvalidMask   = 0x88;
-const Offset kRow           = 8;
+// Square implements the 0x88 optimization for board indexing. This data
+// structure consists of a signed byte that stores the file (x-axis) in bytes
+// 1-3, the rank (y-axis) in bytes 5-7, and uses bytes 4 and 8 to detect
+// overflow so we know if a position is invalid.
+class Square {
+ public:
+  static const Square kUp;
+  static const Square kDown;
+  static const Square kLeft;
+  static const Square kRight;
+  static const Square kInvalid;
 
-namespace delta {
+  constexpr Square() : x88_(0) {}
+  constexpr Square(int rank, int file) : x88_(rank * 0x10 + file) {}
+  constexpr explicit Square(int8_t x88) : x88_(x88) {}
 
-const Offset kU  = kRank;
-const Offset kD  = -kU;
-const Offset kR  = kFile;
-const Offset kL  = -kR;
-const Offset kUR = kU + kR;
-const Offset kUL = kU + kL;
-const Offset kDR = kD + kR;
-const Offset kDL = kD + kL;
+  constexpr inline int8_t x88() const   { return x88_;                   }
+  constexpr inline int Rank() const     { return x88_ >> 4;              }
+  constexpr inline int File() const     { return x88_ & 0x07;            }
+  constexpr inline size_t Index() const { return Rank() * kRow + File(); }
+  constexpr inline bool Valid() const   { return !(x88_ & 0x88);         }
 
-const std::array<Offset, 4> kOrthogonal = {{
-  kU, kD, kR, kL,
-}};
+  static constexpr inline Square FromIndex(int index) {
+    return Square(index / kRow, index % kRow);
+  }
 
-const std::array<Offset, 4> kDiagonal = {{
-  kUR, kUL, kDR, kDL,
-}};
+  constexpr inline bool operator==(Square other) const {
+    return (x88_ == other.x88_);
+  }
 
-const std::array<Offset, 8> kOmnigonal = {{
-  kU, kD, kR, kL, kUR, kUL, kDR, kDL,
-}};
+  constexpr inline Square operator+(Square other) const {
+    return Square(x88_ + other.x88_);
+  }
 
-// The 8 'L' shapes.
-const std::array<Offset, 8> kKnight = {{
-  kU + kUR, kU + kUL,
-  kD + kDR, kD + kDL,
-  kR + kUR, kR + kDR,
-  kL + kUL, kL + kDL,
-}};
+  constexpr inline Square operator-(Square other) const {
+    return Square(x88_ - other.x88_);
+  }
 
-}  // namespace delta
+  inline void operator+=(Square other) {
+    x88_ += other.x88_;
+  }
 
-// Conversions between Rank, File numbers, Indices, and 0x88.
-Offset Rank(Square square);
-Offset File(Square square);
-Square Getx88(Offset rank, Offset file);
-Square Getx88(char f, char r);
-Square Getx88(int index);
-int Index(Square square);
+  inline void operator-=(Square other) {
+    x88_ -= other.x88_;
+  }
 
-static inline bool Valid(Square square) {
-  return !(square & kInvalidMask);
-}
+  std::string ToString() const;
+  static Square Parse(std::string str);
 
-std::string PrintSquare(const Square& square);
+ private:
+  int8_t x88_;
+};
 
-std::ostream& operator<<(std::ostream& os, const Square& square);
+std::ostream& operator<<(std::ostream& os, Square square);
 
 }  // namespace chessy
 

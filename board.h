@@ -109,7 +109,7 @@ class Board {
   BitBoard GetBitBoard(Color color, Piece piece) const;
 
   bool SquareAttacked(Square square, Color color) const;
-  Square KingSquare(Color color) const;
+  // Square KingSquare(Color color) const;
 
   // Whether |square| was involved in the previous move.
   bool ActiveSquare(const Square square) const;
@@ -130,7 +130,7 @@ class Board {
   Squares QueenTargets(Square square);
   Squares KingTargets(Square square);
 
-  void SlidingTargets(Squares* res, Square source, Offset delta);
+  void SlidingTargets(Squares* res, Square source, Square delta);
   void SetAttacked(Square square);
   BitBoard PositionMask(Color color) const;
 
@@ -154,7 +154,7 @@ class Board {
   SquareTable square_table_;  // Indexed by Square
   Color color_;
 
-  Square king_square_[kColors];
+  // Square king_square_[kColors];
 
   Move last_move_ = kBadMove;
 };
