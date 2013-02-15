@@ -8,7 +8,6 @@
 
 #include <glog/logging.h>
 
-#include "binary.h"
 #include "chessy.h"
 #include "move.h"
 #include "render.h"
@@ -20,18 +19,18 @@ using std::endl;
 namespace chessy {
 
 const BoardPosition kInitialBoardPosition = {{
-  BitBoard(11111111_bin << kRow),        // White Pawn
-  BitBoard(01000010_bin),                // White Knight
-  BitBoard(00100100_bin),                // White Bishop
-  BitBoard(10000001_bin),                // White Rook
-  BitBoard(00001000_bin),                // White Queen
-  BitBoard(00010000_bin),                // White King
-  BitBoard(11111111_bin << (kRow * 6)),  // Black Pawn
-  BitBoard(01000010_bin << (kRow * 7)),  // Black Knight
-  BitBoard(00100100_bin << (kRow * 7)),  // Black Bishop
-  BitBoard(10000001_bin << (kRow * 7)),  // Black Rook
-  BitBoard(00001000_bin << (kRow * 7)),  // Black Queen
-  BitBoard(00010000_bin << (kRow * 7)),  // Black King
+  BitBoard("11111111") << kRow,        // White Pawn
+  BitBoard("01000010"),                // White Knight
+  BitBoard("00100100"),                // White Bishop
+  BitBoard("10000001"),                // White Rook
+  BitBoard("00001000"),                // White Queen
+  BitBoard("00010000"),                // White King
+  BitBoard("11111111") << (kRow * 6),  // Black Pawn
+  BitBoard("01000010") << (kRow * 7),  // Black Knight
+  BitBoard("00100100") << (kRow * 7),  // Black Bishop
+  BitBoard("10000001") << (kRow * 7),  // Black Rook
+  BitBoard("00001000") << (kRow * 7),  // Black Queen
+  BitBoard("00010000") << (kRow * 7),  // Black King
 }};
 
 Board::Board() : board_(kInitialBoardPosition), color_(kWhite) {
@@ -253,8 +252,9 @@ Squares Board::KnightTargets(Square source) {
   Squares res;
   for (const auto delta : delta::kKnight) {
     Square target = source + delta;
-    if (kInvalidMove != QualifyTarget(target))
+    if (kInvalidMove != QualifyTarget(target)) {
       res.emplace_front(target);
+    }
   }
   return res;
 }
@@ -269,15 +269,17 @@ Squares Board::BishopTargets(Square source) {
 
 Squares Board::RookTargets(Square source) {
   Squares res;
-  for (const auto delta : delta::kOrthogonal)
+  for (const auto delta : delta::kOrthogonal) {
     SlidingTargets(&res, source, delta);
+  }
   return res;
 }
 
 Squares Board::QueenTargets(Square source) {
   Squares res;
-  for (const auto delta : delta::kOmnigonal)
+  for (const auto delta : delta::kOmnigonal) {
     SlidingTargets(&res, source, delta);
+  }
   return res;
   /*    Squares res;
         Squares diagonals = BishopTargets(source);
@@ -327,14 +329,16 @@ int Board::Score() const {
 }
 
 BitBoard Board::Friends() {
-  if (kEmptyBoard == friends_)
+  if (kEmptyBoard == friends_) {
     friends_ = PositionMask(color_);
+  }
   return friends_;
 }
 
 BitBoard Board::Enemies() {
-  if (kEmptyBoard == enemies_)
+  if (kEmptyBoard == enemies_) {
     enemies_ = PositionMask(Toggle(color_));
+  }
   return enemies_;
 }
 

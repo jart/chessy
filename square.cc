@@ -35,11 +35,11 @@ int Index(Square square) {
 }
 
 Offset Rank(Square square) {
-  return square >> kRankShift;  // 4th through 7th bit
+  return square >> kRankShift;  // 4th through 7th bit.
 }
 
 Offset File(Square square) {
-  return square & kFileMask;    // First 3 bits
+  return square & kFileMask;  // First 3 bits.
 }
 
 string PrintSquare(const Square& square) {
