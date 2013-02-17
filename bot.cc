@@ -5,9 +5,10 @@
 
 #include <glog/logging.h>
 
+#include "bitboard.h"
+#include "bitmove.h"
 #include "board.h"
 #include "bot.h"
-#include "move.h"
 #include "render.h"
 #include "term.h"
 
@@ -21,35 +22,37 @@ int g_branches_pruned = 0;
 #define TLOG \
   VLOG(2) << string((kMaxDepth - depth) * 2, ' ')
 
-int Think(Board* board) {
+int Think(const Board& board) {
   return -NegaMax(board, kMaxDepth, kMinScore, kMaxScore);
 }
 
 // Maximizes the negation of the enemy player's positions.
-int NegaMax(Board* board, int depth, int alpha, int beta) {
-  Moves moves = board->PossibleMoves();
+int NegaMax(const Board& board, int depth, int alpha, int beta) {
+  Bitmoves moves = board.PossibleMoves();
   TLOG << moves.size()
-       << "-< (" << ColorString(Toggle(board->color()))
-       << " "    << board->last_move()
+       << "-< (" << Toggle(board.color())
+       // << " "    << board.last_move()
        << ") a[" << alpha
        << "] b[" << beta
        << "] >- ";
-  if (depth == 0 || moves.size() == 0) {
-    int score = board->Score();
-    TLOG << "h-val(" << board->color_str() << ")=" << score;
+  if (moves.size() == 0) {
+    TLOG << "h-val(" << board.color() << ")=" << kMaxScore;
+    return kMaxScore;
+  }
+  if (depth == 0) {
+    int score = board.score();
+    TLOG << "h-val(" << board.color() << ")=" << score;
     // TODO: Quiescent search if last_move_ is "exciting".
     return score;
   }
   g_branches_searched += moves.size();
-  for (const auto& move : moves) {
-    board->Update(move);
-    int val = -NegaMax(board, depth - 1, -beta, -alpha);
-    board->Undo(move);
+  for (const Bitmove& move : moves) {
+    int val = -NegaMax(Board(board, move), depth - 1, -beta, -alpha);
     // Beta pruning skips remaining branches, because the current sub-tree is
     // now guaranteed to be futile (at least within the current depth).
     if (val >= beta) {
       g_branches_pruned += moves.size();
-      TLOG << "<-- b-pruned(" << board->color_str() << ")=" << beta;
+      TLOG << "<-- b-pruned(" << board.color() << ")=" << beta;
       return val;
     }
     // Alpha just maximizes the negation of the next moves.
@@ -57,7 +60,7 @@ int NegaMax(Board* board, int depth, int alpha, int beta) {
       alpha = val;
     }
   }
-  TLOG << "<--- a-negamaxed(" << board->color_str() << ")=" << alpha;
+  TLOG << "<--- a-negamaxed(" << board.color() << ")=" << alpha;
   return alpha;
 }
 

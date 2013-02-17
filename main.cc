@@ -8,12 +8,21 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
+#include "bitmove.h"
+#include "bitboard.h"
 #include "board.h"
 #include "chessy.h"
+#include "square.h"
 #include "term.h"
 
+using std::cout;
+using std::endl;
+using std::string;
+
+using namespace chessy;
+
 static void OnQuit(int sig) {
-  chessy::EndGame();
+  EndGame();
 }
 
 int main(int argc, char** argv) {
@@ -24,9 +33,17 @@ int main(int argc, char** argv) {
   google::InstallFailureSignalHandler();
   std::srand(static_cast<unsigned>(std::time(0)));
   signal(SIGINT, &OnQuit);
-  signal(SIGABRT, &OnQuit);
-  signal(SIGTERM, &OnQuit);
-  std::cout << chessy::term::kClear;
-  chessy::GameLoop();
+  InitBitmoves();
+
+  // Board board;
+  // board = Board(board, board.ComposeMove("e2", "e4"));
+  // board = Board(board, board.ComposeMove("d7", "d5"));
+  // board = Board(board, board.ComposeMove("f1", "b5"));
+  // cout << board;
+  // cout << board.IsChecking() << endl;
+
+  cout << term::kClear;
+  GameLoop();
+
   return 0;
 }

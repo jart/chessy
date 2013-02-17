@@ -12,25 +12,25 @@ const Square Square::kLeft    = Square( 0, -1);
 const Square Square::kRight   = Square( 0,  1);
 const Square Square::kInvalid = Square(0x88);
 
-Square Square::Parse(std::string str) {
+Square::Square(std::string str) {
   if (str.size() != 2)
-    return kInvalid;
+    return;
   int file = std::tolower(str[0]) - 'a';
   if (file < 0 || file >= kRow)
-    return kInvalid;
+    return;
   int rank = str[1] - '1';
   if (rank < 0 || rank >= kRow)
-    return kInvalid;
-  return Square(rank, file);
+    return;
+  x88_ = rank * 0x10 + file;
 }
 
 std::string Square::ToString() const {
-  if (!Valid()) {
+  if (!IsValid()) {
     return "NA(" + term::x2s(x88_) + ")";
   }
   std::string res;
-  res += 'a' + File();
-  res += '1' + Rank();
+  res += 'a' + file();
+  res += '1' + rank();
   return res;
 }
 

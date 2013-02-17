@@ -10,10 +10,12 @@ namespace chessy {
 
 static const int kRow = 8;
 
-// Square implements the 0x88 optimization for board indexing. This data
-// structure consists of a signed byte that stores the file (x-axis) in bytes
-// 1-3, the rank (y-axis) in bytes 5-7, and uses bytes 4 and 8 to detect
-// overflow so we know if a position is invalid.
+// Square implements the 0x88 optimization for board indexing. Square can be
+// used to store the coordinates of a piece of the delta for a move. This data
+// structure consists of a signed byte that stores the file (x-axis) in bits
+// 1-3, the rank (y-axis) in bits 5-7, and bits 4 and 8 are used to detect
+// overflow. The eponymous constant 0x88 is a mask of bits 4 and 8 which can
+// quickly check for invalid positions.
 class Square {
  public:
   static const Square kUp;
@@ -25,16 +27,14 @@ class Square {
   constexpr Square() : x88_(0) {}
   constexpr Square(int rank, int file) : x88_(rank * 0x10 + file) {}
   constexpr explicit Square(int8_t x88) : x88_(x88) {}
+  Square(std::string str);
+  Square(const char* str) : Square(std::string(str)) {}
 
-  constexpr inline int8_t x88() const   { return x88_;                   }
-  constexpr inline int Rank() const     { return x88_ >> 4;              }
-  constexpr inline int File() const     { return x88_ & 0x07;            }
-  constexpr inline size_t Index() const { return Rank() * kRow + File(); }
-  constexpr inline bool Valid() const   { return !(x88_ & 0x88);         }
-
-  static constexpr inline Square FromIndex(int index) {
-    return Square(index / kRow, index % kRow);
-  }
+  constexpr inline operator int() const { return x88_;           }
+  constexpr inline int8_t x88() const   { return x88_;           }
+  constexpr inline int rank() const     { return x88_ >> 4;      }
+  constexpr inline int file() const     { return x88_ & 0x07;    }
+  constexpr inline bool IsValid() const { return !(x88_ & 0x88); }
 
   constexpr inline bool operator==(Square other) const {
     return (x88_ == other.x88_);
@@ -46,14 +46,6 @@ class Square {
 
   constexpr inline Square operator-(Square other) const {
     return Square(x88_ - other.x88_);
-  }
-
-  inline void operator+=(Square other) {
-    x88_ += other.x88_;
-  }
-
-  inline void operator-=(Square other) {
-    x88_ -= other.x88_;
   }
 
   std::string ToString() const;

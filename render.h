@@ -4,16 +4,12 @@
 #ifndef CHESSY_RENDER_H_
 #define CHESSY_RENDER_H_
 
-#include <array>
-#include <ostream>
 #include <string>
-
-#include "chessy.h"
 
 namespace chessy {
 
 class Board;
-struct Move;
+struct Bitmove;
 
 namespace render {
 
@@ -36,13 +32,11 @@ std::string HumanMovePrompt();
 // UpdateBoard should be called in most cases, rather than Board::Print()
 // because this redraws a mimimal number of console chars in response to a move
 // update, while Board::Print draw *every* character over again.
-void UpdateBoard(Board* board, Move move);
+void UpdateBoard(const Board& board, const Bitmove& move);
 
-void Everything(Board* board);
+void Everything(const Board& board);
 
 }  // namespace render
-
-std::ostream& operator<<(std::ostream& os, const Piece& piece);
 
 }  // namespace chessy
 

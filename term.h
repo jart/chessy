@@ -12,7 +12,6 @@
 namespace chessy {
 namespace term {
 
-// TODO: Make these conversion thingies better.
 std::string i2s(int x);
 std::string x2s(int x);
 
