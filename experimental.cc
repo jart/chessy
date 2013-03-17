@@ -14,10 +14,10 @@ int main(int argc, char** argv) {
   google::InitGoogleLogging(argv[0]);
   google::InstallFailureSignalHandler();
 
-  Square sq = Square(0, 0) + Square(1, 1) + Square(0, 5);
-  printf("%x rank=%d file=%d valid=%d\n",
-         sq.x88(), sq.Rank(), sq.File(), sq.Valid());
-  return 0;
+  // Square sq = Square(0, 0) + Square(1, 1) + Square(0, 5);
+  // printf("%x rank=%d file=%d valid=%d\n",
+  //        sq.x88(), sq.rank(), sq.file(), sq.valid());
+  // return 0;
 
   // Print(BitKnight(2, 3)); cout << endl;
   // Print(BitKing(2, 2)); cout << endl;

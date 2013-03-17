@@ -32,14 +32,14 @@ struct Move {
   explicit Move(MoveType type) : type(type) {}
   Move(MoveType type, Square source, Square dest) :
       source(source), dest(dest),
-      type(type), captured(kNoPiece),
+      type(type), captured(Piece()),
       priority(0) {}
   Move(MoveType type, Square source, Square dest, Piece captured);
 
   Square source;
   Square dest;
-  MoveType type : 3;
-  Piece captured : 3;
+  MoveType type;
+  Piece captured;
   int priority;  // Move ordering.
 };
 

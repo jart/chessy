@@ -1,5 +1,7 @@
-*.o
-*.swp
+/*.o
+/*.d
+/*.swp
 /chessy
-/core
 /experimental
+/gtest-1.6.0/src/gtest-all.o
+/gtest-1.6.0/src/gtest_main.o
